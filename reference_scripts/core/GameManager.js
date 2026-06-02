@@ -64,7 +64,7 @@ const GameManager = (() => {
       state.fatherDone = true; addHeart();
     } else if (name === 'girl' && !state.girlDone) {
       state.girlDone = true; addHeart();
-    }
+    } 
   }
 
   function meetGirl() {
