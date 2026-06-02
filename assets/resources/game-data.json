@@ -1,0 +1,189 @@
+{
+  "dialogues": {
+    "intro_girl": {
+      "id": "intro_girl",
+      "lines": [
+        { "speaker": "???",       "text": "...Excuse me, did you drop this USB drive? It was near the river bank." },
+        { "speaker": "EECS Boy",  "text": "Oh! Yes! Thank you — my entire OS assignment was on there!" },
+        { "speaker": "???",       "text": "Haha, you look like you saw a ghost. Is something that important on it?" },
+        { "speaker": "EECS Boy",  "text": "You literally saved my life. I don't know how to thank you..." },
+        { "speaker": "Mei",       "text": "I'm Mei. See you around, EECS boy.",
+          "choices": [
+            { "text": "\"Wait — can I get your contact?\"", "index": 0, "affinityDelta": 10, "jumpTo": "intro_girl_bold" },
+            { "text": "\"Uh... thanks. Bye.\"",             "index": 1, "affinityDelta": -5, "jumpTo": "intro_girl_shy"  }
+          ]
+        }
+      ]
+    },
+    "intro_girl_bold": {
+      "id": "intro_girl_bold",
+      "lines": [
+        { "speaker": "Mei", "text": "Heh. Bold. Maybe if you can impress the people around me first..." },
+        { "speaker": "Mei", "text": "My dad's by the river — he's strict, but honest. The food stall to the north is where Niu Pai hangs out." },
+        { "speaker": "Mei", "text": "And go east to Delta Building — Prof. Hung has something to test you on." },
+        { "speaker": "Mei", "text": "When you're done... come find me south of Delta Building. I'll be waiting. 💕" }
+      ]
+    },
+    "intro_girl_shy": {
+      "id": "intro_girl_shy",
+      "lines": [
+        { "speaker": "Mei", "text": "...Okay then. Bye." },
+        { "speaker": "EECS Boy", "text": "(She walked away. I should've said something better...)" },
+        { "speaker": "EECS Boy", "text": "(But maybe I can still prove myself. I should start with her father by the river.)" }
+      ]
+    },
+
+    "father_pre": {
+      "id": "father_pre",
+      "lines": [
+        { "speaker": "Mr. Wang",  "text": "So YOU'RE the one bothering my daughter near the river." },
+        { "speaker": "Mr. Wang",  "text": "I've been sorting goods here my whole life. I can tell good character from bad." },
+        { "speaker": "Mr. Wang",  "text": "Catch what's worth keeping. Throw away what isn't. Let's see if you can tell the difference." }
+      ]
+    },
+    "father_post_win": {
+      "id": "father_post_win",
+      "lines": [
+        { "speaker": "Mr. Wang",  "text": "...Good instincts. You know what to keep and what to let go." },
+        { "speaker": "Mr. Wang",  "text": "Head north to Xiao Chi Bu. And... don't make her cry." }
+      ]
+    },
+    "father_post_lose": {
+      "id": "father_post_lose",
+      "lines": [
+        { "speaker": "Mr. Wang",  "text": "You can't even tell good from bad when it's right in front of you. Come back when you're ready." }
+      ]
+    },
+
+    "niupai_pre": {
+      "id": "niupai_pre",
+      "lines": [
+        { "speaker": "Stall Owner", "text": "Ay! Watch out — three black strays got loose in the market again!" },
+        { "speaker": "Stall Owner", "text": "But don't worry — Niu Pai will follow you. She's... friendly." },
+        { "speaker": "EECS Boy",    "text": "Three dogs? ...I'm going to need more sausages." }
+      ]
+    },
+    "niupai_post_win": {
+      "id": "niupai_post_win",
+      "lines": [
+        { "speaker": "EECS Boy",  "text": "Made it through! Niu Pai, you really helped out there." },
+        { "speaker": "EECS Boy",  "text": "Now... East to Delta Building. Prof. Hung is waiting." }
+      ]
+    },
+
+    "professor_pre": {
+      "id": "professor_pre",
+      "lines": [
+        { "speaker": "Prof. Hung", "text": "Ah, you must be the one Mei mentioned. I teach dynamics here at Delta." },
+        { "speaker": "Prof. Hung", "text": "Love is like a pendulum — timing is everything." },
+        { "speaker": "Prof. Hung", "text": "Swing across these platforms. Release at precisely the right moment. Begin!" }
+      ]
+    },
+    "professor_post_win": {
+      "id": "professor_post_win",
+      "lines": [
+        { "speaker": "Prof. Hung", "text": "...Perfect release. You understand that timing is everything — in physics, and in matters of the heart." },
+        { "speaker": "Prof. Hung", "text": "Take this fragment. Mei is waiting south of this building. Don't keep her." }
+      ]
+    },
+    "professor_post_lose": {
+      "id": "professor_post_lose",
+      "lines": [
+        { "speaker": "Prof. Hung", "text": "The rope of fate requires precise release. Too early or too late — both result in a fall." },
+        { "speaker": "Prof. Hung", "text": "Come back and try again. Patience." }
+      ]
+    },
+
+    "girl_pre_game": {
+      "id": "girl_pre_game",
+      "lines": [
+        { "speaker": "Mei", "text": "You actually made it through everything. My dad, the market, even Prof. Hung..." },
+        { "speaker": "Mei", "text": "I'm... genuinely impressed." },
+        { "speaker": "Mei", "text": "But there's one more thing. I want to know if we're really in sync — heart to heart.",
+          "choices": [
+            { "text": "\"I've been waiting for this moment.\"", "index": 0, "affinityDelta": 15, "jumpTo": "girl_pre_accept" },
+            { "text": "\"...No pressure, right?\"",             "index": 1, "affinityDelta":  5, "jumpTo": "girl_pre_nervous" }
+          ]
+        }
+      ]
+    },
+    "girl_pre_accept": {
+      "id": "girl_pre_accept",
+      "lines": [
+        { "speaker": "Mei", "text": "Heh. Confident. I like it. Ready when you are. ♥" }
+      ]
+    },
+    "girl_pre_nervous": {
+      "id": "girl_pre_nervous",
+      "lines": [
+        { "speaker": "Mei", "text": "Just breathe. Follow the rhythm. I'll be right here." }
+      ]
+    },
+    "girl_after_game": {
+      "id": "girl_after_game",
+      "lines": [
+        { "speaker": "Mei", "text": "Our hearts are already in sync. ♥" },
+        { "speaker": "EECS Boy", "text": "(I think this is exactly where I'm supposed to be.)" }
+      ]
+    }
+  },
+
+  "endings": {
+    "ending_true_love": {
+      "key": "ending_true_love",
+      "slides": [
+        { "title": "TRUE LOVE ENDING", "cgType": "true_love",
+          "body": "You collected all Heart Fragments and proved yourself to everyone.\n\nMr. Wang by the river. Niu Pai at the food stall. Prof. Hung on the rooftop.\n\nMei turns to you with a warm smile..." },
+        { "title": "", "cgType": "kiss",
+          "body": "\"I heard everything you did. My dad approves. Even Niu Pai likes you now.\"\n\n\"...I like you too, EECS boy.\"\n\n*She leans in and gives you a gentle kiss on the cheek.*\n\n💗 Your heart.exe has been fully compiled." },
+        { "title": "CONGRATULATIONS!", "cgType": "true_love",
+          "body": "LOVE.EXE — Complete!\n\nThank you for playing. ♥\n\nGroup 23 | SS2026 NTHU" }
+      ]
+    },
+    "ending_friend_zone": {
+      "key": "ending_friend_zone",
+      "slides": [
+        { "title": "FRIEND ZONE ENDING", "cgType": "friend",
+          "body": "You did well, but something was missing...\n\nMei smiles warmly and extends her hand." },
+        { "title": "", "cgType": "friend",
+          "body": "\"You're a really good person. Let's be friends!\"\n\n*You smile and nod, hiding your disappointment.*\n\n...At least you have Niu Pai." }
+      ]
+    },
+    "ending_rejected": {
+      "key": "ending_rejected",
+      "slides": [
+        { "title": "REJECTED ENDING", "cgType": "rejected",
+          "body": "You didn't manage to impress anyone...\n\nMei shakes her head gently." },
+        { "title": "", "cgType": "rejected",
+          "body": "\"I'm sorry... I don't think this will work out.\"\n\n*Maybe try a little harder next time.*\n\n...You walk back along the river alone." }
+      ]
+    },
+    "ending_niupai": {
+      "key": "ending_niupai",
+      "slides": [
+        { "title": "NIU PAI ENDING 🐕 (Easter Egg!)", "cgType": "dog",
+          "body": "You fed Niu Pai so many times at Xiao Chi Bu that you completely forgot why you came." },
+        { "title": "", "cgType": "dog",
+          "body": "Niu Pai follows you everywhere now.\n\n\"Woof!\" — Translation: \"You complete me.\"\n\n*ACHIEVEMENT UNLOCKED: Best Dog Dad*\n\n...Who needs romance when you have unconditional love?" }
+      ]
+    },
+    "ending_eecs_overload": {
+      "key": "ending_eecs_overload",
+      "slides": [
+        { "title": "EECS OVERLOAD ENDING (Easter Egg!)", "cgType": "eecs",
+          "body": "You aced every challenge — the river catch, the market dash, the rooftop swing...\n\nBut you never once said anything romantic to Mei." },
+        { "title": "", "cgType": "eecs",
+          "body": "You graduate with the highest honors in EECS history.\n\n...Still single.\n\n> GPA: 4.0\n> Girlfriend: NULL\n> Happiness: undefined\n\n*ACHIEVEMENT UNLOCKED: 4.0 GPA, 0 Dates.*" }
+      ]
+    },
+    "ending_secret": {
+      "key": "ending_secret",
+      "slides": [
+        { "title": "🌟 SECRET ENDING 🌟", "cgType": "secret",
+          "body": "You found the hidden bush beside the river bank.\n\nA mysterious glowing figure steps out..." },
+        { "title": "", "cgType": "secret",
+          "body": "???: \"You're the first player to find me. I've been waiting.\"\n\n\"As a reward — I'll tell you the truth about LOVE.EXE:\"\n\n\"...It was all a game. But the feelings? Those were real.\"\n\n✨ Congratulations, True Explorer." }
+      ]
+    }
+  }
+}
