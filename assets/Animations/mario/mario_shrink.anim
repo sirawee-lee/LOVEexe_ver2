@@ -1,0 +1,55 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "mario_shrink",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 2.533333333333333,
+  "sample": 60,
+  "speed": 3,
+  "wrapMode": 0,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0.03333333333333333,
+            "value": {
+              "__uuid__": "923dd95f-0be5-4cf8-880b-cdf4e951afdb"
+            }
+          },
+          {
+            "frame": 0.5,
+            "value": {
+              "__uuid__": "3b2c5a54-9efb-4eb5-8aad-0e7aa2dc82dc"
+            }
+          },
+          {
+            "frame": 0.9833333333333333,
+            "value": {
+              "__uuid__": "923dd95f-0be5-4cf8-880b-cdf4e951afdb"
+            }
+          },
+          {
+            "frame": 1.45,
+            "value": {
+              "__uuid__": "3b2c5a54-9efb-4eb5-8aad-0e7aa2dc82dc"
+            }
+          },
+          {
+            "frame": 1.9833333333333334,
+            "value": {
+              "__uuid__": "923dd95f-0be5-4cf8-880b-cdf4e951afdb"
+            }
+          },
+          {
+            "frame": 2.5166666666666666,
+            "value": {
+              "__uuid__": "3b2c5a54-9efb-4eb5-8aad-0e7aa2dc82dc"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "events": []
+}
