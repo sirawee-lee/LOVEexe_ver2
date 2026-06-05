@@ -98,8 +98,7 @@ cc.Class({
 
   // Play this game's music (only if a clip was dragged into `bgm`)
   _playBgm() {
-    if (!this.bgm) { cc.warn('[BGM] dontPress: this.bgm is NULL at runtime (clip not wired/loaded)'); return; }
-        cc.log('[BGM] dontPress: playing', this.bgm && this.bgm.name, '| vol', this.bgmVolume);
+    if (!this.bgm) return;
     cc.audioEngine.stopMusic();
     cc.audioEngine.playMusic(this.bgm, true);
     cc.audioEngine.setMusicVolume(this.bgmVolume);

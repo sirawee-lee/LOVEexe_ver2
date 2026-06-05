@@ -106,8 +106,7 @@ cc.Class({
 
     // เล่นเพลงประจำเกม (ถ้าลากไฟล์มาใส่ช่อง bgm แล้ว)
     _playBgm() {
-        if (!this.bgm) { cc.warn('[BGM] needle: this.bgm is NULL at runtime (clip not wired/loaded)'); return; }
-        cc.log('[BGM] needle: playing', this.bgm && this.bgm.name, '| vol', this.bgmVolume);
+        if (!this.bgm) return;
         cc.audioEngine.stopMusic();
         cc.audioEngine.playMusic(this.bgm, true);
         cc.audioEngine.setMusicVolume(this.bgmVolume);
