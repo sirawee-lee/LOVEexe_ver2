@@ -14,6 +14,8 @@
 //
 // *** Characters use prefabs YOU build from SpriteFrames in your .plist files ***
 
+const GameFlow = require('GameFlow');
+
 cc.Class({
     extends: cc.Component,
 
@@ -53,6 +55,15 @@ cc.Class({
         exitX:  { default:  520 },
         laneTop:    { default:  120 },
         laneBottom: { default: -160 },
+
+        // ===== Per-game music (drag an audio clip here in the Inspector) =====
+        bgm:       { default: null, type: cc.AudioClip, tooltip: 'Background music for this game (loops)' },
+        bgmVolume: { default: 0.6, tooltip: 'Music volume 0..1' },
+
+        // ===== Sound effects (drag an audio clip into each) =====
+        tapSfx:     { default: null, type: cc.AudioClip, tooltip: 'Plays each time you tap the hand to count' },
+        correctSfx: { default: null, type: cc.AudioClip, tooltip: 'Plays when an answer is correct' },
+        wrongSfx:   { default: null, type: cc.AudioClip, tooltip: 'Plays when an answer is wrong' },
     },
 
     onLoad() {
@@ -77,7 +88,23 @@ cc.Class({
         if (this.endLabel) this.endLabel.node.active = false;
         this.clearIcons();
 
+        GameFlow.onEnterGame('counterGame', this.node);
+        this._playBgm();
+
         this.startLevel();
+    },
+
+    // Play this game's music (only if a clip was dragged into `bgm`)
+    _playBgm() {
+        if (!this.bgm) return;
+        cc.audioEngine.stopMusic();
+        cc.audioEngine.playMusic(this.bgm, true);
+        cc.audioEngine.setMusicVolume(this.bgmVolume);
+    },
+
+    // Play a one-shot sound effect (only if a clip is assigned)
+    _sfx(clip) {
+        if (clip) cc.audioEngine.playEffect(clip, false);
     },
 
     onDestroy() {
@@ -173,6 +200,7 @@ cc.Class({
         this.counter++;
         this.updateCounter();
         this.shakeCounter();
+        this._sfx(this.tapSfx);
     },
 
     onKeyDown(event) {
@@ -192,6 +220,7 @@ cc.Class({
         this.results.push(correct);
         if (correct) this.correctCount++;
         this.addIcon(correct);            // show check / cross in the row
+        this._sfx(correct ? this.correctSfx : this.wrongSfx);
 
         if (this.resultLabel) {
             this.resultLabel.string = correct
@@ -215,6 +244,7 @@ cc.Class({
     finishGame() {
         const won = (this.correctCount >= this.winThreshold);
         this.showEnd(won ? 'You Win' : 'You Lose', won ? cc.Color.GREEN : cc.Color.RED);
+        this.scheduleOnce(() => (won ? GameFlow.win() : GameFlow.lose()), 1.4);
     },
 
     // ----- Progress icons -----

@@ -5,6 +5,8 @@
 // พลาด   -> ป้าย "Missed :(" สีแดง
 // มี 3 เวล ยิ่งเวลสูง ยิ่งเร็ว + ช่องที่ยอมรับแคบลง
 
+const GameFlow = require('GameFlow');
+
 cc.Class({
     extends: cc.Component,
 
@@ -50,6 +52,34 @@ cc.Class({
             default: 180,
             tooltip: 'ระยะขึ้น-ลงจากจุดกึ่งกลาง (px)',
         },
+        eyeTopExpand: {
+            default: 0.10,
+            tooltip: 'ขยายขอบ "บน" ของรูตาเข็มให้ผ่านง่ายขึ้น (0.10 = +10% ของช่องเดิม)',
+        },
+        timeLimit: {
+            default: 10,
+            tooltip: 'เวลารวมทั้ง 3 เลเวล (วินาที) นับเฉพาะตอนมือกำลังขยับ',
+        },
+        maxMisses: {
+            default: 3,
+            tooltip: 'พลาดครบกี่ครั้งถือว่าเล่นเกมเข็มไม่สำเร็จ (หัก 1 หัวใจ)',
+        },
+
+        // ===== เพลงประจำเกม (ลากไฟล์เสียงมาวางใน Inspector) =====
+        bgm: {
+            default: null,
+            type: cc.AudioClip,
+            tooltip: 'เพลงพื้นหลังของเกมนี้ (เล่นวนลูป)',
+        },
+        bgmVolume: {
+            default: 0.6,
+            tooltip: 'ความดังเพลง 0..1',
+        },
+
+        // ===== Sound effects (ลากไฟล์เสียงมาวาง) =====
+        successSfx: { default: null, type: cc.AudioClip, tooltip: 'เสียงตอนสอดด้ายเข้าสำเร็จ (Got it!)' },
+        failSfx:    { default: null, type: cc.AudioClip, tooltip: 'เสียงตอนพลาด (Missed)' },
+        winSfx:     { default: null, type: cc.AudioClip, tooltip: 'เสียงตอนชนะครบทุกเลเวล' },
     },
 
     onLoad() {
@@ -57,6 +87,10 @@ cc.Class({
         this.level = 1;
         this.direction = 1;            // 1 = ขึ้น, -1 = ลง
         this.isPlaying = true;
+
+        this.misses = 0;               // นับพลาดสะสมทั้งเกม (ครบ maxMisses = แพ้)
+        this.finished = false;         // จบเกมแล้ว (ชนะ/แพ้) -> หยุดทุกอย่าง
+        this.timeLeft = this.timeLimit;
 
         // กึ่งกลางของช่องตาเข็ม (จากค่าที่วัดมา)
         this.eyeCenter = (this.eyeTopY + this.eyeBottomY) / 2;   // ~ -21.5
@@ -69,7 +103,23 @@ cc.Class({
 
         this.applyLevel(this.level);
 
+        GameFlow.onEnterGame('needle', this.node);
+        this._playBgm();
+
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
+    },
+
+    // เล่นเพลงประจำเกม (ถ้าลากไฟล์มาใส่ช่อง bgm แล้ว)
+    _playBgm() {
+        if (!this.bgm) return;
+        cc.audioEngine.stopMusic();
+        cc.audioEngine.playMusic(this.bgm, true);
+        cc.audioEngine.setMusicVolume(this.bgmVolume);
+    },
+
+    // เล่น sound effect ครั้งเดียว (ถ้ามีไฟล์ในช่องนั้น)
+    _sfx(clip) {
+        if (clip) cc.audioEngine.playEffect(clip, false);
     },
 
     onDestroy() {
@@ -84,11 +134,28 @@ cc.Class({
         // ความยากมาจากความเร็วมืออย่างเดียว
         this.tolerance = this.eyeHalf;
 
-        if (this.levelLabel) this.levelLabel.string = 'Level ' + level + ' / ' + this.maxLevel;
+        this.updateHud();
+    },
+
+    updateHud() {
+        if (!this.levelLabel) return;
+        const t = Math.max(0, Math.ceil(this.timeLeft));
+        this.levelLabel.string = 'Level ' + this.level + ' / ' + this.maxLevel + '   ⏱ ' + t + 's';
     },
 
     update(dt) {
-        if (!this.isPlaying) return;
+        if (this.finished) return;
+        if (!this.isPlaying) return;   // ระหว่างอนิเมชันสำเร็จ/พลาด นาฬิกาพัก
+
+        // นับเวลาถอยหลัง (รวมทั้ง 3 เลเวล)
+        this.timeLeft -= dt;
+        if (this.timeLeft <= 0) {
+            this.timeLeft = 0;
+            this.updateHud();
+            this.failGame('Time up! 💔');
+            return;
+        }
+        this.updateHud();
 
         this.hand.y += this.moveSpeed * this.direction * dt;
 
@@ -111,9 +178,12 @@ cc.Class({
     },
 
     checkThread() {
-        // เทียบ Y ปัจจุบันของมือ กับกลางช่องตาเข็ม
-        const diff = Math.abs(this.hand.y - this.eyeCenter);
-        if (diff <= this.tolerance) {
+        // เทียบ Y ปัจจุบันของมือ กับกลางช่องตาเข็ม (asymmetric: ขอบบนกว้างกว่า)
+        const d = this.hand.y - this.eyeCenter;        // + = ไปทางขอบบน
+        const upper = this.tolerance * (1 + this.eyeTopExpand);  // ขอบบน +10%
+        const lower = this.tolerance;                  // ขอบล่างเท่าเดิม
+        const pass = (d >= 0) ? (d <= upper) : (-d <= lower);
+        if (pass) {
             this.onSuccess();
         } else {
             this.onFail();
@@ -122,6 +192,7 @@ cc.Class({
 
     onSuccess() {
         this.isPlaying = false;     // หยุดเลื่อนขึ้นลง + กันกดซ้ำระหว่างอนิเมชัน
+        this._sfx(this.successSfx);
 
         if (this.resultLabel) {
             this.resultLabel.string = 'Got it!';
@@ -139,7 +210,10 @@ cc.Class({
 
     afterSuccess() {
         if (this.level >= this.maxLevel) {
+            this.finished = true;       // หยุดนาฬิกา
             if (this.resultLabel) this.resultLabel.string = 'You win! 🏆';
+            this._sfx(this.winSfx);
+            this.scheduleOnce(() => GameFlow.win(), 1.0);   // -> next game
             return; // จบเกม
         }
 
@@ -161,10 +235,12 @@ cc.Class({
 
     onFail() {
         this.isPlaying = false;     // หยุดเลื่อนขึ้นลง + กันกดซ้ำระหว่างอนิเมชัน
+        this._sfx(this.failSfx);
+        this.misses++;
 
-        // ป้าย "Missed :(" สีแดง
+        // ป้าย "Missed :(" สีแดง พร้อมจำนวนครั้งที่พลาด
         if (this.resultLabel) {
-            this.resultLabel.string = 'Missed :(';
+            this.resultLabel.string = 'Missed :(  (' + this.misses + '/' + this.maxMisses + ')';
             this.resultLabel.node.color = cc.Color.RED;
         }
 
@@ -172,8 +248,25 @@ cc.Class({
         cc.tween(this.hand)
             .to(0.4, { x: this.threadedX }, { easing: 'cubicOut' })
             .delay(0.5)            // ค้างให้เห็นว่าด้ายไม่เข้ารู
-            .call(() => this.retryLevel())
+            .call(() => {
+                if (this.misses >= this.maxMisses) this.failGame('Failed! 💔');
+                else this.retryLevel();
+            })
             .start();
+    },
+
+    // เล่นเกมเข็มไม่สำเร็จ (พลาดครบ maxMisses หรือหมดเวลา) -> หัก 1 หัวใจ
+    failGame(reason) {
+        if (this.finished) return;
+        this.finished = true;
+        this.isPlaying = false;
+        cc.Tween.stopAllByTarget(this.hand);
+        this._sfx(this.failSfx);
+        if (this.resultLabel) {
+            this.resultLabel.string = reason || 'Failed! 💔';
+            this.resultLabel.node.color = cc.Color.RED;
+        }
+        this.scheduleOnce(() => GameFlow.lose(), 1.0);  // -> Try Again (หัก 😍)
     },
 
     // รีเซ็ตตำแหน่งกลับ เล่นเลเวลเดิมต่อ (ใช้ตอนพลาด)

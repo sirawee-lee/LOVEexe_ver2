@@ -7,6 +7,8 @@
 // Wrong action = You Lose. Clear every level = You Win.
 // Click the button (or press Space). After a win/lose, tap the button to play again.
 
+const GameFlow = require('GameFlow');
+
 cc.Class({
   extends: cc.Component,
 
@@ -37,6 +39,19 @@ cc.Class({
       default: 1.0,
       tooltip: 'Seconds of no-press before a "press N" level is judged',
     },
+
+    // Per-game music (drag an audio clip here in the Inspector)
+    bgm: {
+      default: null,
+      type: cc.AudioClip,
+      tooltip: "Background music for this game (loops)",
+    },
+    bgmVolume: { default: 0.6, tooltip: "Music volume 0..1" },
+
+    // Sound effects (drag an audio clip into each)
+    pressSfx: { default: null, type: cc.AudioClip, tooltip: "Plays when the button is pressed" },
+    passSfx:  { default: null, type: cc.AudioClip, tooltip: "Plays when a level is passed (Nice!)" },
+    failSfx:  { default: null, type: cc.AudioClip, tooltip: "Plays when you lose" },
   },
 
   onLoad() {
@@ -74,7 +89,24 @@ cc.Class({
       this.button.on(cc.Node.EventType.TOUCH_START, this.onPress, this);
     cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
 
+    this._handoff = false;
+    GameFlow.onEnterGame('dontPress', this.node);
+    this._playBgm();
+
     this.startLevel();
+  },
+
+  // Play this game's music (only if a clip was dragged into `bgm`)
+  _playBgm() {
+    if (!this.bgm) return;
+    cc.audioEngine.stopMusic();
+    cc.audioEngine.playMusic(this.bgm, true);
+    cc.audioEngine.setMusicVolume(this.bgmVolume);
+  },
+
+  // Play a one-shot sound effect (only if a clip is assigned)
+  _sfx(clip) {
+    if (clip) cc.audioEngine.playEffect(clip, false);
   },
 
   onDestroy() {
@@ -122,6 +154,7 @@ cc.Class({
   },
 
   onPress() {
+    if (this._handoff) return;          // flow is taking over -> ignore taps
     if (this.phase === "over") {
       this.restartGame();
       return;
@@ -129,6 +162,7 @@ cc.Class({
     if (this.phase !== "play") return;
 
     this.buttonPunch();
+    this._sfx(this.pressSfx);
 
     if (this.cfg.required === 0) {
       this.fail("You pressed it!");
@@ -154,6 +188,7 @@ cc.Class({
   pass() {
     this.phase = "between";
     this.stopPulse();
+    this._sfx(this.passSfx);
     if (this.resultLabel) {
       this.resultLabel.string = "Nice!";
       this.resultLabel.node.color = cc.Color.GREEN;
@@ -176,22 +211,27 @@ cc.Class({
       this.resultLabel.string = "YOU WIN!";
       this.resultLabel.node.color = cc.Color.GREEN;
     }
-    if (this.promptLabel)
-      this.promptLabel.string = "Tap the button to play again";
+    if (this.promptLabel) this.promptLabel.string = "";
     if (this.timerLabel) this.timerLabel.string = "";
     if (this.countLabel) this.countLabel.string = "";
+
+    this._handoff = true;
+    this.scheduleOnce(() => GameFlow.win(), 1.0);   // -> next game
   },
 
   fail(reason) {
     this.phase = "over";
     this.stopPulse();
+    this._sfx(this.failSfx);
     if (this.resultLabel) {
       this.resultLabel.string = "YOU LOSE\n" + reason;
       this.resultLabel.node.color = cc.Color.RED;
     }
-    if (this.promptLabel)
-      this.promptLabel.string = "Tap the button to play again";
+    if (this.promptLabel) this.promptLabel.string = "";
     if (this.timerLabel) this.timerLabel.string = "";
+
+    this._handoff = true;
+    this.scheduleOnce(() => GameFlow.lose(), 1.2);   // -> Try Again
   },
 
   restartGame() {

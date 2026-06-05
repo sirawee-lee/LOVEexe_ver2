@@ -4,6 +4,8 @@
 // Hit a pipe or the ground = Game Over. Tap (Input Area) or Space to flap / restart.
 // Pipes are built in code from pipe_body / pipe_cap SpriteFrames (no prefabs).
 
+const GameFlow = require('GameFlow');
+
 cc.Class({
   extends: cc.Component,
 
@@ -70,6 +72,19 @@ cc.Class({
       default: -520,
       tooltip: "Ground recycles when fully past this x",
     },
+
+    // Per-game music (drag an audio clip here in the Inspector)
+    bgm: {
+      default: null,
+      type: cc.AudioClip,
+      tooltip: "Background music for this game (loops)",
+    },
+    bgmVolume: { default: 0.6, tooltip: "Music volume 0..1" },
+
+    // Sound effects (drag an audio clip into each)
+    flapSfx:  { default: null, type: cc.AudioClip, tooltip: "Plays on each flap" },
+    scoreSfx: { default: null, type: cc.AudioClip, tooltip: "Plays when you pass a pipe" },
+    hitSfx:   { default: null, type: cc.AudioClip, tooltip: "Plays when you crash (game over)" },
   },
 
   onLoad() {
@@ -79,7 +94,24 @@ cc.Class({
       this.inputArea.on(cc.Node.EventType.TOUCH_START, this.onFlap, this);
     cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
 
+    this._handoff = false;
+    GameFlow.onEnterGame('flappy1', this.node);
+    this._playBgm();
+
     this.resetGame();
+  },
+
+  // Play this game's music (only if a clip was dragged into `bgm`)
+  _playBgm() {
+    if (!this.bgm) return;
+    cc.audioEngine.stopMusic();
+    cc.audioEngine.playMusic(this.bgm, true);
+    cc.audioEngine.setMusicVolume(this.bgmVolume);
+  },
+
+  // Play a one-shot sound effect (only if a clip is assigned)
+  _sfx(clip) {
+    if (clip) cc.audioEngine.playEffect(clip, false);
   },
 
   onDestroy() {
@@ -116,6 +148,7 @@ cc.Class({
   },
 
   onFlap() {
+    if (this._handoff) return;          // flow is taking over -> ignore taps
     if (this.phase === "over") {
       this.resetGame();
       return;
@@ -125,6 +158,7 @@ cc.Class({
       if (this.messageLabel) this.messageLabel.string = "";
     }
     this.vy = this.flapSpeed;
+    this._sfx(this.flapSfx);
   },
 
   update(dt) {
@@ -174,6 +208,7 @@ cc.Class({
         p.passed = true;
         this.score++;
         this.updateScore();
+        this._sfx(this.scoreSfx);
         if (this.score >= this.winThreshold) {
           this.finish(true);
           return;
@@ -284,12 +319,15 @@ cc.Class({
 
   finish(won) {
     this.phase = "over";
+    if (!won) this._sfx(this.hitSfx);
     if (this.messageLabel) {
       this.messageLabel.string = won
-        ? "You Win!\nPassed " + this.score + " pipes\nTap to play again"
-        : "Game Over\nScore: " + this.score + "\nTap to retry";
+        ? "You Win!\nPassed " + this.score + " pipes"
+        : "Game Over\nScore: " + this.score;
       this.messageLabel.node.color = won ? cc.Color.GREEN : cc.Color.RED;
     }
+    this._handoff = true;
+    this.scheduleOnce(() => (won ? GameFlow.win() : GameFlow.lose()), 1.2);
   },
 
   updateScore() {

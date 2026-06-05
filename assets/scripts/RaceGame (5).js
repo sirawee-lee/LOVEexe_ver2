@@ -15,6 +15,8 @@
 //  (Hero -> Player Frames, Mario -> Cpu Frames.)
 // =============================================================
 
+const GameFlow = require('GameFlow');
+
 cc.Class({
     extends: cc.Component,
 
@@ -29,6 +31,8 @@ cc.Class({
         animSpeedScale: { default: 1, tooltip: "CPU walk-cycle speed multiplier." },
 
         // ---- AUDIO (optional) ----
+        bgm: { default: null, type: cc.AudioClip, tooltip: "Background music for this game (loops)." },
+        bgmVolume: { default: 0.6, tooltip: "Music volume 0..1." },
         footstepSfx: { default: null, type: cc.AudioClip, tooltip: "Plays on each footstep/tap." },
         countdownSfx: { default: null, type: cc.AudioClip, tooltip: "Plays on 3 / 2 / 1." },
         goSfx: { default: null, type: cc.AudioClip, tooltip: "Plays on GO!" },
@@ -64,7 +68,19 @@ cc.Class({
         if (!this.cpuFrames || this.cpuFrames.length === 0)
             cc.warn("[RaceGame] No Cpu Frames assigned - showing a placeholder box.");
 
+        this._handoff = false;
+        GameFlow.onEnterGame('runner', this.node);
+        this._playBgm();
+
         this._resetGame();
+    },
+
+    // Play this game's music (only if a clip was dragged into `bgm`)
+    _playBgm() {
+        if (!this.bgm) return;
+        cc.audioEngine.stopMusic();
+        cc.audioEngine.playMusic(this.bgm, true);
+        cc.audioEngine.setMusicVolume(this.bgmVolume);
     },
 
     onDestroy() {
@@ -231,6 +247,7 @@ cc.Class({
     //  INPUT
     // ---------------------------------------------------------
     onKeyDown(e) {
+        if (this._handoff) return;          // flow is taking over -> ignore keys
         const K = cc.macro.KEY;
         switch (e.keyCode) {
             case K.left:
@@ -365,6 +382,9 @@ cc.Class({
         this._setHint(this.tapCount + " taps  ·  " + t.toFixed(1) + "s  ·  avg " +
             avg + " BPM      |      R / SPACE to restart");
         if (!this._finishPlayed) { this._finishPlayed = true; this._playSfx(this.finishSfx, 1); }
+
+        this._handoff = true;
+        this.scheduleOnce(() => (who === "player" ? GameFlow.win() : GameFlow.lose()), 1.6);
     },
 
     // ---------------------------------------------------------

@@ -292,7 +292,7 @@
         0,
         0,
         1,
-        1,
+        1.138,
         1,
         1
       ]
@@ -441,14 +441,14 @@
       "ctor": "Float64Array",
       "array": [
         -13.577,
-        -88.089,
+        -53.582,
         0,
         0,
         0,
         0,
         1,
         0.907,
-        1,
+        1.088,
         1
       ]
     },
@@ -1053,6 +1053,11 @@
     "spawnX": 540,
     "despawnX": -560,
     "groundLeftX": -520,
+    "bgm": null,
+    "bgmVolume": 0.6,
+    "flapSfx": null,
+    "scoreSfx": null,
+    "hitSfx": null,
     "_id": "7e1QUtzm5KlK5h8gzw/wLy"
   },
   {
