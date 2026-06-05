@@ -83,7 +83,6 @@ cc.Class({
 
     // Sound effects (drag an audio clip into each)
     flapSfx:  { default: null, type: cc.AudioClip, tooltip: "Plays on each flap" },
-    scoreSfx: { default: null, type: cc.AudioClip, tooltip: "Plays when you pass a pipe" },
     hitSfx:   { default: null, type: cc.AudioClip, tooltip: "Plays when you crash (game over)" },
   },
 
@@ -208,7 +207,6 @@ cc.Class({
         p.passed = true;
         this.score++;
         this.updateScore();
-        this._sfx(this.scoreSfx);
         if (this.score >= this.winThreshold) {
           this.finish(true);
           return;

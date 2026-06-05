@@ -260,6 +260,9 @@
     "_components": [
       {
         "__id__": 6
+      },
+      {
+        "__id__": 23
       }
     ],
     "_prefab": null,
@@ -292,7 +295,7 @@
         0,
         0,
         1,
-        1.138,
+        1,
         1,
         1
       ]
@@ -1060,9 +1063,6 @@
     "flapSfx": {
       "__uuid__": "d5dd2fbe-a130-4450-867b-27d23240bb69"
     },
-    "scoreSfx": {
-      "__uuid__": "85d285fe-b265-49a8-8af2-20f6c2d84529"
-    },
     "hitSfx": {
       "__uuid__": "439971a1-16cf-4634-8bab-93cb40c8ec9a"
     },
@@ -1111,5 +1111,32 @@
     "_originalWidth": 960,
     "_originalHeight": 800,
     "_id": "29zXboiXFBKoIV4PQ2liTe"
+  },
+  {
+    "__type__": "cc.Widget",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 5
+    },
+    "_enabled": true,
+    "alignMode": 2,
+    "_target": null,
+    "_alignFlags": 45,
+    "_left": 0,
+    "_right": 0,
+    "_top": 0,
+    "_bottom": 0,
+    "_verticalCenter": 0,
+    "_horizontalCenter": 0,
+    "_isAbsLeft": true,
+    "_isAbsRight": true,
+    "_isAbsTop": true,
+    "_isAbsBottom": true,
+    "_isAbsHorizontalCenter": true,
+    "_isAbsVerticalCenter": true,
+    "_originalWidth": 960,
+    "_originalHeight": 800,
+    "_id": "bgFiLLwidGet0000000001"
   }
 ]

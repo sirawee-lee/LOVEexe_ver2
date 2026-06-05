@@ -334,7 +334,7 @@
       "__uuid__": "f3f30194-d115-4a1d-b759-2440c061c7f5"
     },
     "raceDistance": 300,
-    "targetBpm": 720,
+    "targetBpm": 700,
     "tapsToWin": 360,
     "cpuHandicapSeconds": 1,
     "cpuSpeedVariation": 0.18,

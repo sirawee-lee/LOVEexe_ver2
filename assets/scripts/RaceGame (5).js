@@ -40,7 +40,7 @@ cc.Class({
 
         // ---- RACE TUNING ----
         raceDistance: { default: 300, tooltip: "Total race length (units). Only affects visual scale, not the BPM bar." },
-        targetBpm: { default: 720, tooltip: "BPM (taps/min) you must average to win. 720 = 12 taps/sec." },
+        targetBpm: { default: 700, tooltip: "BPM (taps/min) you must average to win. 700 = ~11.7 taps/sec." },
         tapsToWin: { default: 360, tooltip: "Alternating taps to reach the finish. Duration = tapsToWin / (targetBpm/60) sec." },
         cpuHandicapSeconds: { default: 1, tooltip: "CPU is this many seconds slower than the exact pace (your win margin)." },
         cpuSpeedVariation: { default: 0.18, tooltip: "How much the CPU speeds up / slows down (0..1)." },
@@ -392,8 +392,8 @@ cc.Class({
     // ---------------------------------------------------------
     _updateCamera(dt) {
         const pwx = this.playerProgress * this.pixelsPerUnit;
-        const cwx = this.cpuProgress * this.pixelsPerUnit;
-        let target = -((pwx + cwx) / 2);
+        // กล้องตามตัวผู้เล่นอย่างเดียว (ไม่สนตำแหน่ง CPU) ตลอดจนเข้าเส้นชัย
+        let target = -pwx;
         if (target > this.offsetMax) target = this.offsetMax;
         if (target < this.offsetMin) target = this.offsetMin;
         this.worldX += (target - this.worldX) * Math.min(1, dt * 6);
