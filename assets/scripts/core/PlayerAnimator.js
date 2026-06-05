@@ -31,6 +31,12 @@ cc.Class({
 
     // Call this if the texture is set after onLoad
     _buildFrames: function () {
+        // Defensive: tolerate being called before onLoad ran (e.g. on a node
+        // that was just attached) so _apply() never reads undefined indices.
+        if (this._dir == null)      this._dir = 'down';
+        if (this._frameIdx == null) this._frameIdx = 0;
+        if (this._moving == null)   this._moving = false;
+
         var tex = this.spritesheet;
         var fw  = this.frameWidth;
         var fh  = this.frameHeight;

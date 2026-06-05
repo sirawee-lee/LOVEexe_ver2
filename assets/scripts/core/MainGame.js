@@ -4,27 +4,41 @@
 var MAP_W = 1600;
 var MAP_H = 960;
 
-// Interaction zones in CC local coords (0,0 = map center, Y-up)
-// Adjust x,y to match building positions on map.png
-var ZONES = [
-    { id: 'xiaochibu', label: 'Xiao Chi Bu',  game: 'niupai',    x: -480, y:  340, r: 100 },
-    { id: 'delta',     label: 'Delta Bldg',   game: 'professor', x:  480, y:  340, r: 100 },
-    { id: 'chengk',    label: 'Cheng K Lake', game: 'father',    x: -480, y: -300, r: 110 },
-    { id: 'library',   label: 'Library',      game: 'finalboss', x:  480, y: -300, r: 100 },
-];
+// Interaction zones are placed in the editor as InteractZone rectangles under
+// the "InteractZones" node — see InteractZone.js.
 
-var WALK_SPEED = 80;   // CC units / second (map coords)
-var RUN_SPEED  = 180;  // holding Shift
+var WALK_SPEED = 80;   // CC units / second — holding Shift (slow walk)
+var RUN_SPEED  = 220;  // default movement — faster run
 var ZOOM       = 2;    // world scale — zooms in, eliminates edge voids
+
+var StoryState = require('StoryState');
+
+// npcId → display name for the "[E] Talk to ..." hint
+var NPC_NAMES = { father: 'Mr. Wang', professor: 'Prof. Hung', niupai: 'Niu Pai', mei: 'Mei' };
 
 cc.Class({
     extends: cc.Component,
 
     properties: {
+        // ── Editor-placed nodes (drag from Node Tree) ──────────
+        worldNode:         { default: null, type: cc.Node },
+        collidersNode:     { default: null, type: cc.Node },
+        interactZonesNode: { default: null, type: cc.Node },  // entrance rectangles (legacy)
+        npcsNode:          { default: null, type: cc.Node },  // story NPCs (NPC.js)
+        tiledMapBgNode:    { default: null, type: cc.Node },  // TiledMap below player
+        tiledMapFgNode:    { default: null, type: cc.Node },  // TiledMap above player
+
+        // ── Assets ────────────────────────────────────────────
         mapTexture:   { default: null, type: cc.SpriteFrame },
-        playerSheet:  { default: null, type: cc.Texture2D   }, // boy_spritesheet.png
-        playerFrameW: { default: 48,   type: cc.Integer     }, // pixels per frame
+        playerSheet:  { default: null, type: cc.Texture2D   },
+        playerFrameW: { default: 48,   type: cc.Integer     },
         playerFrameH: { default: 64,   type: cc.Integer     },
+
+        // ── Dog companion (Niu Pai) — follows the player ──────
+        dogSheet:     { default: null, type: cc.Texture2D   },  // niupai_spritesheet (4-dir)
+        dogFrameW:    { default: 32,   type: cc.Integer     },
+        dogFrameH:    { default: 32,   type: cc.Integer     },
+
         bgm:          { default: null, type: cc.AudioClip   },
     },
 
@@ -32,18 +46,27 @@ cc.Class({
     onLoad: function () {
         cc.log('[MainGame] v3 onLoad');
         var self = this;
-        self._W = 700;
-        self._H = 400;
+        // Viewport size in design units. Canvas is Fit-Height (960×640 design,
+        // height locked to 640), so width varies with the window aspect ratio.
+        var vis = cc.view.getVisibleSize();
+        self._W = vis.width;
+        self._H = vis.height;
         // Map is 100×60 tiles × 16px = 1600×960 (confirmed by PowerShell)
         self._mapW = 1600;
         self._mapH = 960;
         self._camLogged = false;
 
-        // ── World node (scrolls with camera) ──
-        var world = new cc.Node('World');
-        world.setPosition(0, 0);
-        world.setScale(ZOOM);           // 2× zoom — map appears larger on screen
-        self.node.addChild(world, 0);
+        // ── World node ────────────────────────────────────────
+        // Use the editor-placed node if assigned, otherwise create one at runtime
+        var world;
+        if (self.worldNode) {
+            world = self.worldNode;
+        } else {
+            world = new cc.Node('World');
+            world.setPosition(0, 0);
+            self.node.addChild(world, 0);
+        }
+        world.setScale(ZOOM);
         self._world = world;
 
         // Map background
@@ -54,6 +77,53 @@ cc.Class({
         mapNode.setPosition(0, 0);
         world.addChild(mapNode, 0);
 
+        // ── TiledMap layer visibility ─────────────────────────
+        // Background TiledMap: hide foreground layers
+        var BG_HIDE = ['trees', 'trees_flower', 'objects', 'gate', 'buildings'];
+        // Foreground TiledMap: hide background layers
+        var FG_HIDE = ['ground', 'lake', 'ground2'];
+
+        function hideLayers(tmNode, layerNames) {
+            if (!tmNode) return;
+            var tm = tmNode.getComponent(cc.TiledMap);
+            if (!tm) return;
+            layerNames.forEach(function (name) {
+                var layer = tm.getLayer(name);
+                if (layer) layer.node.active = false;
+            });
+        }
+
+        hideLayers(self.tiledMapBgNode, BG_HIDE);
+        hideLayers(self.tiledMapFgNode, FG_HIDE);
+
+        // FG must render above player (player is added at zIndex=2)
+        if (self.tiledMapFgNode) self.tiledMapFgNode.zIndex = 3;
+
+        // ── Build collision list from editor-placed CollisionZone nodes ──
+        // A child with a cc.PolygonCollider is stored as a traced polygon
+        // (for irregular shapes like the lake); everything else is an AABB rect.
+        self._colliders = [];
+        if (self.collidersNode) {
+            self.collidersNode.children.forEach(function (child) {
+                var poly = child.getComponent(cc.PolygonCollider);
+                if (poly && poly.points && poly.points.length >= 3) {
+                    var ox = child.x + poly.offset.x;
+                    var oy = child.y + poly.offset.y;
+                    var pts = poly.points.map(function (p) {
+                        return { x: ox + p.x, y: oy + p.y };
+                    });
+                    self._colliders.push({ type: 'poly', pts: pts });
+                } else {
+                    self._colliders.push({
+                        type: 'rect',
+                        x: child.x, y: child.y,
+                        w: child.width, h: child.height,
+                    });
+                }
+            });
+            cc.log('[MainGame] loaded ' + self._colliders.length + ' colliders from editor');
+        }
+
         // Log actual texture size for verification
         self.scheduleOnce(function () {
             var sz  = mapNode.getContentSize();
@@ -62,25 +132,38 @@ cc.Class({
                    '  texture=' + (tex ? tex.width + 'x' + tex.height : 'null'));
         }, 0.5);
 
-        // Zone marker nodes (subtle circle + label)
-        var markerGfx = new cc.Node('ZoneMarkers');
-        var gfx = markerGfx.addComponent(cc.Graphics);
-        ZONES.forEach(function (zone) {
-            gfx.strokeColor = cc.color(255, 240, 100, 60);
-            gfx.lineWidth   = 2;
-            gfx.circle(zone.x, zone.y, zone.r);
-            gfx.stroke();
+        // ── Interaction zones (editor-placed InteractZone rectangles) ──
+        self._zones = [];
+        if (self.interactZonesNode) {
+            self.interactZonesNode.children.forEach(function (child) {
+                var iz = child.getComponent('InteractZone');
+                self._zones.push({
+                    x: child.x, y: child.y, w: child.width, h: child.height,
+                    game:  iz ? iz.game  : '',
+                    label: iz ? iz.label : child.name,
+                });
+            });
+        }
 
-            var lbl = new cc.Node('zl_' + zone.id);
-            var l   = lbl.addComponent(cc.Label);
-            l.string    = zone.label;
-            l.fontSize  = 12;
-            l.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-            lbl.color   = cc.color(255, 240, 120);
-            lbl.setPosition(zone.x, zone.y + zone.r + 10);
-            world.addChild(lbl, 1);
-        });
-        world.addChild(markerGfx, 1);
+        // ── Story NPCs (NPC.js) — talk zones ───────────────────
+        self._npcs = [];
+        self._activeNpc = null;
+        self._npcAutoTriggered = {};   // npcId -> already auto-played this session
+        if (self.npcsNode) {
+            self.npcsNode.zIndex = 2;   // render NPCs at the player's level, above the map
+            self.npcsNode.children.forEach(function (child) {
+                var npc = child.getComponent('NPC');
+                if (!npc) return;
+                self._npcs.push({
+                    node:  child,            // live position (NPCs may roam)
+                    w: npc.triggerW, h: npc.triggerH,
+                    npcId: npc.npcId,
+                });
+            });
+            cc.log('[MainGame] loaded ' + self._npcs.length + ' NPCs');
+        } else {
+            cc.warn('[MainGame] npcsNode not assigned — NPCs will not appear or be interactable');
+        }
 
         // Player node — Sprite + PlayerAnimator
         var pNode = new cc.Node('Player');
@@ -99,6 +182,31 @@ cc.Class({
         anim.frameHeight  = self.playerFrameH;
         if (self.playerSheet) anim._buildFrames();
         self._anim = anim;
+
+        // ── Dog companion (Niu Pai) — walks beside the player ──
+        // Attach to World BEFORE adding PlayerAnimator, so its onLoad runs
+        // synchronously (initialising _dir/_frameIdx/_moving) before we call
+        // _buildFrames(). Building frames on a detached node crashes _apply().
+        self._dogNode = null;
+        if (!self.dogSheet) cc.warn('[MainGame] dogSheet not assigned — Niu Pai companion will never appear');
+        if (self.dogSheet) {
+            var dNode = new cc.Node('Dog');
+            dNode.addComponent(cc.Sprite);
+            self._dogX = self._px - 32;
+            self._dogY = self._py - 4;
+            dNode.setPosition(self._dogX, self._dogY);
+            world.addChild(dNode, 2);
+            var dAnim = dNode.addComponent('PlayerAnimator');
+            dAnim.spritesheet = self.dogSheet;
+            dAnim.frameWidth  = self.dogFrameW;
+            dAnim.frameHeight = self.dogFrameH;
+            dAnim._buildFrames();
+            dAnim.setMoving(false);
+            self._dogNode = dNode;
+            self._dogAnim = dAnim;
+            // Hidden until Niu Pai is rescued at XCB; then she follows.
+            dNode.active = StoryState.dogJoined;
+        }
 
         // ── UI layer (fixed — doesn't scroll) ──
         // Interaction hint
@@ -164,13 +272,66 @@ cc.Class({
     },
 
     // ── Input ─────────────────────────────────────────────────
+    // ── Collision check against editor-placed CollisionZone nodes ──
+    _collidesWithMap: function (nx, ny) {
+        var hw = 10, hh = 12; // player half-hitbox (slightly smaller than sprite)
+        for (var i = 0; i < this._colliders.length; i++) {
+            var c = this._colliders[i];
+            if (c.type === 'poly') {
+                // Player centre vs traced polygon (trace slightly inside the
+                // shore so the sprite doesn't visibly overlap the water edge).
+                if (this._pointInPoly(nx, ny, c.pts)) return true;
+            } else {
+                var hw2 = Math.abs(c.w) / 2, hh2 = Math.abs(c.h) / 2;
+                if (nx + hw > c.x - hw2 && nx - hw < c.x + hw2 &&
+                    ny + hh > c.y - hh2 && ny - hh < c.y + hh2) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    },
+
+    // Ray-casting point-in-polygon (even-odd rule). pts: [{x,y}, ...]
+    _pointInPoly: function (x, y, pts) {
+        var inside = false;
+        for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+            var xi = pts[i].x, yi = pts[i].y;
+            var xj = pts[j].x, yj = pts[j].y;
+            if (((yi > y) !== (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+                inside = !inside;
+            }
+        }
+        return inside;
+    },
+
+    // Remove an NPC (e.g. the XCB dog once Niu Pai joins the player): deactivate
+    // the node so it both disappears AND stops registering its talk zone.
+    _hideNpc: function (id) {
+        for (var i = 0; i < this._npcs.length; i++) {
+            if (this._npcs[i].npcId === id && this._npcs[i].node && this._npcs[i].node.isValid) {
+                this._npcs[i].node.active = false;
+                return;
+            }
+        }
+    },
+
     _onKeyDown: function (e) {
         this._keys[e.keyCode] = true;
-        // Interact with zone
+        // No overworld interaction while a dialogue is on screen
+        if (StoryState.dialogueActive) return;
+        // Interact: talk to the nearest NPC (preferred), else a legacy zone
         if (e.keyCode === cc.macro.KEY.e || e.keyCode === cc.macro.KEY.space) {
-            if (this._activeZone) {
+            if (this._activeNpc) {
+                this.node.emit('npc-interact', this._activeNpc.npcId);
+            } else if (this._activeZone) {
                 this.node.emit('launch-minigame', this._activeZone.game);
             }
+        }
+        // Feed Niu Pai (she's always nearby once she's following)
+        if (e.keyCode === cc.macro.KEY.f && this._dogNode) {
+            this.node.emit('feed-dog');
         }
     },
 
@@ -182,8 +343,15 @@ cc.Class({
     update: function (dt) {
         var self = this;
 
-        // ── Player movement — 4-directional only, Shift to run ──
-        var running = !!self._keys[cc.macro.KEY.shift];
+        // Freeze the overworld while a dialogue is on screen
+        if (StoryState.dialogueActive) {
+            if (self._anim)    self._anim.setMoving(false);
+            if (self._dogAnim) self._dogAnim.setMoving(false);
+            return;
+        }
+
+        // ── Player movement — runs by default; hold Shift to walk ──
+        var running = !self._keys[cc.macro.KEY.shift];
         var spd     = (running ? RUN_SPEED : WALK_SPEED) * dt;
 
         var upKey    = self._keys[cc.macro.KEY.w] || self._keys[cc.macro.KEY.up];
@@ -200,7 +368,7 @@ cc.Class({
 
         var moving = dx !== 0 || dy !== 0;
         if (self._anim) {
-            self._anim.fps = running ? 14 : 8;
+            self._anim.fps = running ? 16 : 9;
             if      (dy > 0) self._anim.setDirection('up');
             else if (dy < 0) self._anim.setDirection('down');
             else if (dx < 0) self._anim.setDirection('left');
@@ -208,18 +376,46 @@ cc.Class({
             self._anim.setMoving(moving);
         }
 
-        // Clamp player to map bounds
+        // Move with collision check (try X and Y separately for wall-sliding)
         var hW = self._mapW / 2 - 20, hH = self._mapH / 2 - 20;
-        self._px = Math.max(-hW, Math.min(hW, self._px + dx));
-        self._py = Math.max(-hH, Math.min(hH, self._py + dy));
+        var newX = Math.max(-hW, Math.min(hW, self._px + dx));
+        var newY = Math.max(-hH, Math.min(hH, self._py + dy));
+        if (!self._collidesWithMap(newX, self._py)) self._px = newX;
+        if (!self._collidesWithMap(self._px, newY)) self._py = newY;
         self._playerNode.setPosition(self._px, self._py);
+
+        // ── Dog companion (Niu Pai) — only after she joins at XCB ──
+        if (self._dogNode && StoryState.dogJoined) {
+            if (!self._dogNode.active) {
+                // She just joined — appear at the player's side; the XCB dog leaves
+                self._dogNode.active = true;
+                self._dogX = self._px - 32;
+                self._dogY = self._py - 4;
+                self._hideNpc('niupai');
+            }
+            var tx = self._px - 32, ty = self._py - 4;   // walk on the player's left
+            var dxd = tx - self._dogX, dyd = ty - self._dogY;
+            var gap = Math.hypot(dxd, dyd);
+            var k   = Math.min(1, 12 * dt);   // keep up with the faster run speed
+            self._dogX += dxd * k;
+            self._dogY += dyd * k;
+            var dogMoving = gap > 2.5;
+            if (dogMoving) {
+                if (Math.abs(dxd) > Math.abs(dyd)) self._dogAnim.setDirection(dxd > 0 ? 'right' : 'left');
+                else                               self._dogAnim.setDirection(dyd > 0 ? 'up' : 'down');
+            }
+            self._dogAnim.setMoving(dogMoving);
+            self._dogNode.setPosition(self._dogX, self._dogY);
+        }
 
         // ── Camera — world node is scaled by ZOOM ─────────────
         // A child at (px,py) appears on screen at:
         //   screen = world.pos + (px,py) × ZOOM
         // → world.pos = -(px,py) × ZOOM  (player at screen centre)
         // Clamp so no black void: map edges must stay inside viewport.
-        var vHW = self._W / 2, vHH = self._H / 2;
+        // Recompute viewport each frame so the clamp follows window resizes.
+        var vis = cc.view.getVisibleSize();
+        var vHW = vis.width / 2, vHH = vis.height / 2;
         var sHW = self._mapW / 2 * ZOOM, sHH = self._mapH / 2 * ZOOM;
 
         var worldX = sHW <= vHW ? 0 : Math.max(vHW - sHW, Math.min(sHW - vHW, -self._px * ZOOM));
@@ -240,27 +436,61 @@ cc.Class({
             }
         }
 
-        // ── Zone detection ─────────────────────────────────────
+        // ── Zone detection — player centre inside an InteractZone rect ──
         var nearZone = null;
         var minDist  = Infinity;
-        for (var i = 0; i < ZONES.length; i++) {
-            var z    = ZONES[i];
-            var dist = Math.hypot(self._px - z.x, self._py - z.y);
-            if (dist < z.r && dist < minDist) {
-                minDist  = dist;
-                nearZone = z;
+        for (var i = 0; i < self._zones.length; i++) {
+            var z  = self._zones[i];
+            var hw = Math.abs(z.w) / 2, hh = Math.abs(z.h) / 2;
+            if (self._px > z.x - hw && self._px < z.x + hw &&
+                self._py > z.y - hh && self._py < z.y + hh) {
+                var dist = Math.hypot(self._px - z.x, self._py - z.y);
+                if (dist < minDist) {
+                    minDist  = dist;
+                    nearZone = z;
+                }
             }
         }
 
         self._activeZone = nearZone;
 
-        // ── Hint display ───────────────────────────────────────
-        if (nearZone) {
-            self._hintLabel.string  = '[E] Enter ' + nearZone.label;
-            self._locLabel.string   = nearZone.label;
-            self._hintNode.opacity  = 255;
-            self._locNode.opacity   = 255;
-            // Draw background pill for hint
+        // ── NPC detection (talk zones) ─────────────────────────
+        var nearNpc = null, npcMin = Infinity;
+        for (var n = 0; n < self._npcs.length; n++) {
+            var np  = self._npcs[n];
+            if (!np.node || !np.node.isValid || !np.node.active) continue;  // skip removed NPCs
+            var nx  = np.node.x, ny = np.node.y;       // live position (NPCs may roam)
+            var nhw = Math.abs(np.w) / 2, nhh = Math.abs(np.h) / 2;
+            if (self._px > nx - nhw && self._px < nx + nhw &&
+                self._py > ny - nhh && self._py < ny + nhh) {
+                var nd = Math.hypot(self._px - nx, self._py - ny);
+                if (nd < npcMin) { npcMin = nd; nearNpc = np; }
+            }
+        }
+        self._activeNpc = nearNpc;
+
+        // Auto-play the story beat the first time you reach an NPC this session
+        if (nearNpc && !self._npcAutoTriggered[nearNpc.npcId]) {
+            self._npcAutoTriggered[nearNpc.npcId] = true;
+            self.node.emit('npc-interact', nearNpc.npcId);
+        }
+
+        // ── Hint display (NPC takes priority over legacy zones) ─
+        var hintText = null, locText = null;
+        if (nearNpc) {
+            var nm   = NPC_NAMES[nearNpc.npcId] || 'them';
+            hintText = '[E] Talk to ' + nm;
+            locText  = nm;
+        } else if (nearZone) {
+            hintText = '[E] Enter ' + nearZone.label;
+            locText  = nearZone.label;
+        }
+
+        if (hintText) {
+            self._hintLabel.string = hintText;
+            self._locLabel.string  = locText;
+            self._hintNode.opacity = 255;
+            self._locNode.opacity  = 255;
             var bg = self._hintBg;
             bg.clear();
             bg.fillColor = cc.color(0, 0, 0, 160);
