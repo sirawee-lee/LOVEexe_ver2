@@ -58,11 +58,7 @@ cc.Class({
         },
         timeLimit: {
             default: 10,
-            tooltip: 'เวลารวมทั้ง 3 เลเวล (วินาที) นับเฉพาะตอนมือกำลังขยับ',
-        },
-        maxMisses: {
-            default: 3,
-            tooltip: 'พลาดครบกี่ครั้งถือว่าเล่นเกมเข็มไม่สำเร็จ (หัก 1 หัวใจ)',
+            tooltip: 'เวลารวมทั้ง 3 เลเวล (วินาที) นับเฉพาะตอนมือกำลังขยับ — หมดเวลา = แพ้ (พลาดกี่ครั้งก็ได้)',
         },
 
         // ===== เพลงประจำเกม (ลากไฟล์เสียงมาวางใน Inspector) =====
@@ -88,7 +84,6 @@ cc.Class({
         this.direction = 1;            // 1 = ขึ้น, -1 = ลง
         this.isPlaying = true;
 
-        this.misses = 0;               // นับพลาดสะสมทั้งเกม (ครบ maxMisses = แพ้)
         this.finished = false;         // จบเกมแล้ว (ชนะ/แพ้) -> หยุดทุกอย่าง
         this.timeLeft = this.timeLimit;
 
@@ -111,7 +106,8 @@ cc.Class({
 
     // เล่นเพลงประจำเกม (ถ้าลากไฟล์มาใส่ช่อง bgm แล้ว)
     _playBgm() {
-        if (!this.bgm) return;
+        if (!this.bgm) { cc.warn('[BGM] needle: this.bgm is NULL at runtime (clip not wired/loaded)'); return; }
+        cc.log('[BGM] needle: playing', this.bgm && this.bgm.name, '| vol', this.bgmVolume);
         cc.audioEngine.stopMusic();
         cc.audioEngine.playMusic(this.bgm, true);
         cc.audioEngine.setMusicVolume(this.bgmVolume);
@@ -236,26 +232,23 @@ cc.Class({
     onFail() {
         this.isPlaying = false;     // หยุดเลื่อนขึ้นลง + กันกดซ้ำระหว่างอนิเมชัน
         this._sfx(this.failSfx);
-        this.misses++;
 
-        // ป้าย "Missed :(" สีแดง พร้อมจำนวนครั้งที่พลาด
+        // ป้าย "Missed :(" สีแดง (พลาดกี่ครั้งก็ได้ ไม่หักใจ ตราบใดที่ยังไม่หมดเวลา)
         if (this.resultLabel) {
-            this.resultLabel.string = 'Missed :(  (' + this.misses + '/' + this.maxMisses + ')';
+            this.resultLabel.string = 'Missed :(';
             this.resultLabel.node.color = cc.Color.RED;
         }
 
         // มือเลื่อนเข้าหาเข็มเหมือนตอนสำเร็จ แต่ Y ผิด -> ด้ายจะเฉียดตาเข็มไป (เห็นชัดว่าพลาด)
+        // แล้วกลับมาเล่นเลเวลเดิมต่อทันที (นาฬิกายังเดินรวม 10 วิ)
         cc.tween(this.hand)
             .to(0.4, { x: this.threadedX }, { easing: 'cubicOut' })
             .delay(0.5)            // ค้างให้เห็นว่าด้ายไม่เข้ารู
-            .call(() => {
-                if (this.misses >= this.maxMisses) this.failGame('Failed! 💔');
-                else this.retryLevel();
-            })
+            .call(() => this.retryLevel())
             .start();
     },
 
-    // เล่นเกมเข็มไม่สำเร็จ (พลาดครบ maxMisses หรือหมดเวลา) -> หัก 1 หัวใจ
+    // เล่นเกมเข็มไม่สำเร็จ (หมดเวลา 10 วิ) -> หัก 1 หัวใจ
     failGame(reason) {
         if (this.finished) return;
         this.finished = true;

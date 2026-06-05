@@ -548,11 +548,19 @@
     "eyeTopExpand": 0.1,
     "timeLimit": 10,
     "maxMisses": 3,
-    "bgm": null,
+    "bgm": {
+      "__uuid__": "948012c6-b849-490a-b34d-0d9b3731c11a"
+    },
     "bgmVolume": 0.6,
-    "successSfx": null,
-    "failSfx": null,
-    "winSfx": null,
+    "successSfx": {
+      "__uuid__": "32b1d34d-8731-462c-9a42-746cfff8f78f"
+    },
+    "failSfx": {
+      "__uuid__": "cd0d9565-f6fb-488f-bbf8-f600b0b4ae03"
+    },
+    "winSfx": {
+      "__uuid__": "f3f30194-d115-4a1d-b759-2440c061c7f5"
+    },
     "_id": "84DkLfehhPZLXDtyxE1s/D"
   },
   {

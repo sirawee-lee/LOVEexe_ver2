@@ -805,11 +805,19 @@
       "__id__": 14
     },
     "idleWindow": 1,
-    "bgm": null,
+    "bgm": {
+      "__uuid__": "dc8294bd-c9c8-4df2-a154-8b7495ad7744"
+    },
     "bgmVolume": 0.6,
-    "pressSfx": null,
-    "passSfx": null,
-    "failSfx": null,
+    "pressSfx": {
+      "__uuid__": "d5dd2fbe-a130-4450-867b-27d23240bb69"
+    },
+    "passSfx": {
+      "__uuid__": "32b1d34d-8731-462c-9a42-746cfff8f78f"
+    },
+    "failSfx": {
+      "__uuid__": "cd0d9565-f6fb-488f-bbf8-f600b0b4ae03"
+    },
     "_id": "36xHzUnY5EtatVhlkfXOBt"
   },
   {

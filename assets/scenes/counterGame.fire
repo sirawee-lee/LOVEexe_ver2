@@ -1110,6 +1110,19 @@
     "exitX": 520,
     "laneTop": 120,
     "laneBottom": -160,
+    "bgm": {
+      "__uuid__": "01ad4b52-fca8-4c91-924e-a2494c956531"
+    },
+    "bgmVolume": 0.6,
+    "tapSfx": {
+      "__uuid__": "d5dd2fbe-a130-4450-867b-27d23240bb69"
+    },
+    "correctSfx": {
+      "__uuid__": "32b1d34d-8731-462c-9a42-746cfff8f78f"
+    },
+    "wrongSfx": {
+      "__uuid__": "cd0d9565-f6fb-488f-bbf8-f600b0b4ae03"
+    },
     "_id": "34p2dEMFNA5ZoLzEF1EYR/"
   },
   {

@@ -321,10 +321,18 @@
     "flipPlayer": false,
     "flipCpu": false,
     "animSpeedScale": 1,
-    "footstepSfx": null,
-    "countdownSfx": null,
-    "goSfx": null,
-    "finishSfx": null,
+    "footstepSfx": {
+      "__uuid__": "d5dd2fbe-a130-4450-867b-27d23240bb69"
+    },
+    "countdownSfx": {
+      "__uuid__": "d5dd2fbe-a130-4450-867b-27d23240bb69"
+    },
+    "goSfx": {
+      "__uuid__": "85d285fe-b265-49a8-8af2-20f6c2d84529"
+    },
+    "finishSfx": {
+      "__uuid__": "f3f30194-d115-4a1d-b759-2440c061c7f5"
+    },
     "raceDistance": 300,
     "targetBpm": 720,
     "tapsToWin": 360,
@@ -333,7 +341,10 @@
     "pixelsPerUnit": 70,
     "moveEase": 12,
     "idleResetTime": 0.3,
-    "_id": "25hA2aDI9HRqAIe40U/dpW"
+    "_id": "25hA2aDI9HRqAIe40U/dpW",
+    "bgm": {
+      "__uuid__": "c76b1a9d-e079-4dd4-9b2d-65a0e33fe9c0"
+    }
   },
   {
     "__type__": "cc.Canvas",

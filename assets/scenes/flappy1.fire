@@ -1053,11 +1053,19 @@
     "spawnX": 540,
     "despawnX": -560,
     "groundLeftX": -520,
-    "bgm": null,
+    "bgm": {
+      "__uuid__": "03f14d83-6ae7-4832-a648-20de8d888c62"
+    },
     "bgmVolume": 0.6,
-    "flapSfx": null,
-    "scoreSfx": null,
-    "hitSfx": null,
+    "flapSfx": {
+      "__uuid__": "d5dd2fbe-a130-4450-867b-27d23240bb69"
+    },
+    "scoreSfx": {
+      "__uuid__": "85d285fe-b265-49a8-8af2-20f6c2d84529"
+    },
+    "hitSfx": {
+      "__uuid__": "439971a1-16cf-4634-8bab-93cb40c8ec9a"
+    },
     "_id": "7e1QUtzm5KlK5h8gzw/wLy"
   },
   {
