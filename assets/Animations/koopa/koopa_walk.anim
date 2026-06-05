@@ -1,0 +1,22 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "koopa_walk",
+  "_objFlags": 0,
+  "_duration": 0.4,
+  "sample": 10,
+  "speed": 1,
+  "wrapMode": 2,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          { "frame": 0,   "value": { "__uuid__": "434bd973-1a0d-41e9-a6f2-ff02626a3be9" } },
+          { "frame": 0.1, "value": { "__uuid__": "a7df8312-f3f0-4392-8a30-bc0adecc08cd" } },
+          { "frame": 0.2, "value": { "__uuid__": "6240200c-20b2-430d-8337-0499186ee343" } },
+          { "frame": 0.3, "value": { "__uuid__": "d59842df-db23-427a-86f1-d9cdd085df95" } }
+        ]
+      }
+    }
+  },
+  "events": []
+}

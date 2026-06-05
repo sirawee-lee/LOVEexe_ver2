@@ -1,0 +1,20 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "flower_idle",
+  "_objFlags": 0,
+  "_duration": 0.6,
+  "sample": 10,
+  "speed": 1,
+  "wrapMode": 2,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          { "frame": 0,   "value": { "__uuid__": "a989ba7a-954d-4686-ae1f-92f28ef306b1" } },
+          { "frame": 0.3, "value": { "__uuid__": "a3557714-7b10-422c-9073-db827441792a" } }
+        ]
+      }
+    }
+  },
+  "events": []
+}

@@ -11,6 +11,7 @@
 //   mei       NPC → lake finale       (not built → placeholder; LOCKED until the 3 are won)
 
 var StoryState = require('StoryState');
+var GameFlow   = require('GameFlow');   // the 5-game boss rush (scene-flow module)
 
 cc.Class({
     extends: cc.Component,
@@ -47,7 +48,13 @@ cc.Class({
 
         // Opening cutscene — meet Mei once at game start
         self.scheduleOnce(function () {
-            if (self._dm && !StoryState.seen['intro_girl']) self._dm.play('intro_girl');
+            if (!self._dm) return;
+            if (StoryState.finalCleared && !StoryState.flags.endingShown) {
+                StoryState.flags.endingShown = true;
+                self._dm.play('mei_after');         // finale payoff after the boss returns
+            } else if (!StoryState.seen['intro_girl']) {
+                self._dm.play('intro_girl');        // opening cutscene
+            }
         }, 0.8);
     },
 
@@ -73,8 +80,11 @@ cc.Class({
                     function (cb) { self._runOsu(cb); });
                 break;
             case 'professor':
-                self._runChallenge('professor', 'professor_pre', 'professor_post_win', 'professor_post_lose', 'professor_done',
-                    function (cb) { self._runDressup(cb); });
+                // TEMP: dress-up minigame not ready — skip straight through via dialogue
+                // (like Niu Pai). To re-enable, restore the _runChallenge(... _runDressup) call below.
+                self._runChallengeSkip('professor', 'professor_pre', 'professor_post_win', 'professor_done');
+                // self._runChallenge('professor', 'professor_pre', 'professor_post_win', 'professor_post_lose', 'professor_done',
+                //     function (cb) { self._runDressup(cb); });
                 break;
             case 'niupai':
                 self._runNiupai();
@@ -102,6 +112,16 @@ cc.Class({
                     }
                 });
             });
+        });
+    },
+
+    // TEMP skip: complete a challenge via dialogue only (its real minigame isn't ready yet)
+    _runChallengeSkip: function (key, preId, winId, doneId) {
+        var self = this;
+        if (StoryState.completed[key]) { self._say(doneId); return; }
+        self._say(preId, function () {
+            StoryState.markComplete(key);
+            self._say(winId);
         });
     },
 
@@ -165,10 +185,11 @@ cc.Class({
             self._say(StoryState.seen['mei_locked'] ? 'mei_roam' : 'mei_locked');
             return;
         }
+        // Unlocked → romantic lead-in, then launch the 5-game boss rush.
         self._say('mei_pre', function () {
-            // Library heart-sync finale not built yet — placeholder resolve.
-            StoryState.finalCleared = true;
-            self._say('mei_after');
+            self._say('ready_to_play', function () {
+                GameFlow.startBoss();   // loadScene → first minigame (needle); chains all 5
+            });
         });
     },
 

@@ -41,7 +41,9 @@ cc.Class({
         var fw  = this.frameWidth;
         var fh  = this.frameHeight;
 
-        var rowNames = ['down', 'left', 'right', 'up'];
+        // Default sheet layout: rows = down/left/right/up. Set `rowOrder` before
+        // _buildFrames() to override for sheets with a different row order (e.g. the dog).
+        var rowNames = this.rowOrder || ['down', 'left', 'right', 'up'];
         this._frames = {};
 
         for (var row = 0; row < 4; row++) {

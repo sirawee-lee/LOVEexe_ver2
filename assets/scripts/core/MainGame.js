@@ -7,8 +7,8 @@ var MAP_H = 960;
 // Interaction zones are placed in the editor as InteractZone rectangles under
 // the "InteractZones" node — see InteractZone.js.
 
-var WALK_SPEED = 80;   // CC units / second — holding Shift (slow walk)
-var RUN_SPEED  = 220;  // default movement — faster run
+var WALK_SPEED = 220;  // CC units / second — normal WASD speed
+var RUN_SPEED  = 340;  // holding Shift — sprint (faster than normal)
 var ZOOM       = 2;    // world scale — zooms in, eliminates edge voids
 
 var StoryState = require('StoryState');
@@ -200,6 +200,7 @@ cc.Class({
             dAnim.spritesheet = self.dogSheet;
             dAnim.frameWidth  = self.dogFrameW;
             dAnim.frameHeight = self.dogFrameH;
+            dAnim.rowOrder    = ['down', 'right', 'up', 'left'];  // dog sheet's row layout
             dAnim._buildFrames();
             dAnim.setMoving(false);
             self._dogNode = dNode;
@@ -350,8 +351,8 @@ cc.Class({
             return;
         }
 
-        // ── Player movement — runs by default; hold Shift to walk ──
-        var running = !self._keys[cc.macro.KEY.shift];
+        // ── Player movement — normal WASD; hold Shift to sprint faster ──
+        var running = !!self._keys[cc.macro.KEY.shift];
         var spd     = (running ? RUN_SPEED : WALK_SPEED) * dt;
 
         var upKey    = self._keys[cc.macro.KEY.w] || self._keys[cc.macro.KEY.up];
@@ -368,7 +369,7 @@ cc.Class({
 
         var moving = dx !== 0 || dy !== 0;
         if (self._anim) {
-            self._anim.fps = running ? 16 : 9;
+            self._anim.fps = running ? 18 : 14;
             if      (dy > 0) self._anim.setDirection('up');
             else if (dy < 0) self._anim.setDirection('down');
             else if (dx < 0) self._anim.setDirection('left');
@@ -395,11 +396,13 @@ cc.Class({
             }
             var tx = self._px - 32, ty = self._py - 4;   // walk on the player's left
             var dxd = tx - self._dogX, dyd = ty - self._dogY;
-            var gap = Math.hypot(dxd, dyd);
-            var k   = Math.min(1, 12 * dt);   // keep up with the faster run speed
-            self._dogX += dxd * k;
-            self._dogY += dyd * k;
-            var dogMoving = gap > 2.5;
+            var k   = Math.min(1, 12 * dt);
+            var prevX = self._dogX, prevY = self._dogY;
+            var ndx = self._dogX + dxd * k, ndy = self._dogY + dyd * k;
+            // Respect collision zones, per-axis (same as the player)
+            if (!self._collidesWithMap(ndx, self._dogY)) self._dogX = ndx;
+            if (!self._collidesWithMap(self._dogX, ndy)) self._dogY = ndy;
+            var dogMoving = (Math.abs(self._dogX - prevX) + Math.abs(self._dogY - prevY)) > 0.3;
             if (dogMoving) {
                 if (Math.abs(dxd) > Math.abs(dyd)) self._dogAnim.setDirection(dxd > 0 ? 'right' : 'left');
                 else                               self._dogAnim.setDirection(dyd > 0 ? 'up' : 'down');

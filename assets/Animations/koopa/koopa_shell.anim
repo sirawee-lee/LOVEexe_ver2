@@ -1,0 +1,20 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "koopa_shell",
+  "_objFlags": 0,
+  "_duration": 0.2,
+  "sample": 10,
+  "speed": 1,
+  "wrapMode": 2,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          { "frame": 0,   "value": { "__uuid__": "2df5b9b2-2afc-446f-9f44-09dfcb91fbc7" } },
+          { "frame": 0.1, "value": { "__uuid__": "33454f41-af1c-4125-9ed8-96de0406b081" } }
+        ]
+      }
+    }
+  },
+  "events": []
+}
