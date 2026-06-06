@@ -42,14 +42,43 @@ export default class GameManager extends cc.Component {
     private fxLayer: cc.Node = null;
     private uiLayer: cc.Node = null;
 
-    // ---- HUD ----
-    private scoreLabel: cc.Label = null;
-    private livesLabel: cc.Label = null;
-    private inputLabel: cc.RichText = null;
-    private comboLabel: cc.Label = null;
-    private wpmLabel: cc.Label = null;
-    private levelLabel: cc.Label = null;
-    private progressInfo: cc.Label = null;
+    // ====== ช่องสำหรับลาก Node มาผูกใน Inspector ======
+    // เว้นว่างไว้ได้ทั้งหมด -> เกมจะ "สร้างเอง" ด้วยโค้ดเหมือนเดิม
+    // ถ้าลาก Node จาก editor มาวาง -> เกมจะใช้ Node นั้นแทน (ดูเป็น Cocos จริง ๆ)
+
+    // ---- HUD (ลาก Label จาก scene มาวาง) ----
+    @property({ type: cc.Label, tooltip: "Label แสดงคะแนน (เว้นว่าง = สร้างด้วยโค้ด)" })
+    scoreLabel: cc.Label = null;
+
+    @property({ type: cc.Label, tooltip: "Label แสดงหัวใจ/ชีวิต" })
+    livesLabel: cc.Label = null;
+
+    @property({ type: cc.RichText, tooltip: "RichText แสดงคำที่กำลังพิมพ์ (ล่างจอ)" })
+    inputLabel: cc.RichText = null;
+
+    @property({ type: cc.Label, tooltip: "Label แสดงคอมโบ" })
+    comboLabel: cc.Label = null;
+
+    @property({ type: cc.Label, tooltip: "Label แสดง WPM" })
+    wpmLabel: cc.Label = null;
+
+    @property({ type: cc.Label, tooltip: "Label แสดงด่านปัจจุบัน" })
+    levelLabel: cc.Label = null;
+
+    @property({ type: cc.Label, tooltip: "Label แสดงความคืบหน้าด่าน เช่น 3 / 8" })
+    progressInfo: cc.Label = null;
+
+    // ---- รูปภาพ (ลาก Sprite จาก scene มาวาง) ----
+    @property({ type: cc.Sprite, tooltip: "รูปพื้นหลัง (เว้นว่าง = วาดกริดด้วยโค้ด)" })
+    bgSprite: cc.Sprite = null;
+
+    @property({ type: cc.Sprite, tooltip: "รูปยานผู้เล่น (เว้นว่าง = วาดสามเหลี่ยมด้วยโค้ด)" })
+    playerSprite: cc.Sprite = null;
+
+    // ---- ปุ่ม (ลาก Node ของปุ่ม Start/Restart มาวาง) ----
+    @property({ type: cc.Node, tooltip: "ปุ่ม Start/Restart (จะโชว์เฉพาะหน้าเริ่ม/เกมจบ)" })
+    startButton: cc.Node = null;
+
     private progressBar: cc.Node = null;      // แถบความคืบหน้าด่าน (graphics)
     private centerLabel: cc.Label = null;     // ข้อความกลางจอ (เริ่ม / game over / level clear)
 
@@ -238,6 +267,8 @@ export default class GameManager extends cc.Component {
 
     // ---------- พื้นหลังกริด ----------
     private buildBackground() {
+        // ถ้าลากรูปพื้นหลังมาผูกใน editor แล้ว -> ใช้รูปนั้น ไม่ต้องวาดกริด
+        if (this.bgSprite) return;
         const g = this.bgNode.addComponent(cc.Graphics);
         // เผื่อขอบกันดำ (เลยขอบจอออกไปอีกหน่อย)
         const M = 80;
@@ -264,6 +295,8 @@ export default class GameManager extends cc.Component {
 
     // ---------- ยานผู้เล่น ----------
     private buildPlayer() {
+        // ถ้าลากรูปยานมาผูกใน editor แล้ว -> ใช้รูปนั้น ไม่ต้องวาดสามเหลี่ยม
+        if (this.playerSprite) return;
         this.playerNode.setPosition(0, this.playerY);
         const g = this.playerNode.addComponent(cc.Graphics);
         // ลำตัวยาน (สามเหลี่ยมชี้ขึ้น)
@@ -286,30 +319,44 @@ export default class GameManager extends cc.Component {
 
     // ---------- HUD ----------
     private buildHUD() {
-        this.scoreLabel = this.makeLabel(this.uiLayer, "SCORE 0", 34,
-            -this.HALF_W + 24, this.HALF_H - 36, cc.Label.HorizontalAlign.LEFT);
-        this.scoreLabel.node.color = cc.color(230, 240, 255);
+        // หมายเหตุ: ถ้า Label ถูกลากผูกมาจาก editor แล้ว (this.xxx ไม่ null)
+        // จะข้ามการสร้างด้วยโค้ด แล้วใช้ Node จาก editor แทน
+        if (!this.scoreLabel) {
+            this.scoreLabel = this.makeLabel(this.uiLayer, "SCORE 0", 34,
+                -this.HALF_W + 24, this.HALF_H - 36, cc.Label.HorizontalAlign.LEFT);
+            this.scoreLabel.node.color = cc.color(230, 240, 255);
+        }
 
-        this.livesLabel = this.makeLabel(this.uiLayer, "", 34,
-            this.HALF_W - 24, this.HALF_H - 36, cc.Label.HorizontalAlign.RIGHT);
-        this.livesLabel.node.color = cc.color(255, 120, 120);
+        if (!this.livesLabel) {
+            this.livesLabel = this.makeLabel(this.uiLayer, "", 34,
+                this.HALF_W - 24, this.HALF_H - 36, cc.Label.HorizontalAlign.RIGHT);
+            this.livesLabel.node.color = cc.color(255, 120, 120);
+        }
 
-        this.comboLabel = this.makeLabel(this.uiLayer, "", 28,
-            -this.HALF_W + 24, this.HALF_H - 78, cc.Label.HorizontalAlign.LEFT);
-        this.comboLabel.node.color = cc.color(255, 220, 120);
+        if (!this.comboLabel) {
+            this.comboLabel = this.makeLabel(this.uiLayer, "", 28,
+                -this.HALF_W + 24, this.HALF_H - 78, cc.Label.HorizontalAlign.LEFT);
+            this.comboLabel.node.color = cc.color(255, 220, 120);
+        }
 
-        this.wpmLabel = this.makeLabel(this.uiLayer, "WPM 0", 26,
-            -this.HALF_W + 24, this.HALF_H - 116, cc.Label.HorizontalAlign.LEFT);
-        this.wpmLabel.node.color = cc.color(150, 210, 255);
+        if (!this.wpmLabel) {
+            this.wpmLabel = this.makeLabel(this.uiLayer, "WPM 0", 26,
+                -this.HALF_W + 24, this.HALF_H - 116, cc.Label.HorizontalAlign.LEFT);
+            this.wpmLabel.node.color = cc.color(150, 210, 255);
+        }
 
         // ด่าน + แถบความคืบหน้า (กลางบน)
-        this.levelLabel = this.makeLabel(this.uiLayer, "LEVEL 1", 32,
-            0, this.HALF_H - 34, cc.Label.HorizontalAlign.CENTER);
-        this.levelLabel.node.color = cc.color(235, 245, 255);
+        if (!this.levelLabel) {
+            this.levelLabel = this.makeLabel(this.uiLayer, "LEVEL 1", 32,
+                0, this.HALF_H - 34, cc.Label.HorizontalAlign.CENTER);
+            this.levelLabel.node.color = cc.color(235, 245, 255);
+        }
 
-        this.progressInfo = this.makeLabel(this.uiLayer, "0 / 8", 22,
-            0, this.HALF_H - 70, cc.Label.HorizontalAlign.CENTER);
-        this.progressInfo.node.color = cc.color(180, 200, 220);
+        if (!this.progressInfo) {
+            this.progressInfo = this.makeLabel(this.uiLayer, "0 / 8", 22,
+                0, this.HALF_H - 70, cc.Label.HorizontalAlign.CENTER);
+            this.progressInfo.node.color = cc.color(180, 200, 220);
+        }
 
         this.progressBar = this.newNode("progress", this.uiLayer);
         this.progressBar.setPosition(0, this.HALF_H - 96);
@@ -317,13 +364,15 @@ export default class GameManager extends cc.Component {
         this.drawProgress(0);
 
         // ช่องแสดงคำที่กำลังพิมพ์ (ล่างจอ)
-        const inNode = this.newNode("input", this.uiLayer);
-        inNode.setPosition(0, this.playerY + 96);
-        const rt = inNode.addComponent(cc.RichText);
-        rt.fontSize = 40;
-        rt.horizontalAlign = cc.macro.TextAlignment.CENTER;
-        rt.string = "";
-        this.inputLabel = rt;
+        if (!this.inputLabel) {
+            const inNode = this.newNode("input", this.uiLayer);
+            inNode.setPosition(0, this.playerY + 96);
+            const rt = inNode.addComponent(cc.RichText);
+            rt.fontSize = 40;
+            rt.horizontalAlign = cc.macro.TextAlignment.CENTER;
+            rt.string = "";
+            this.inputLabel = rt;
+        }
 
         this.updateScore();
         this.updateLives();
@@ -611,6 +660,13 @@ export default class GameManager extends cc.Component {
 
     // ==========================================================
     // เริ่ม / จบเกม
+
+    // เรียกจากปุ่ม Start / Restart ใน editor
+    // (ที่ Button -> Click Events ให้เลือกฟังก์ชันชื่อ "onPlayButton")
+    onPlayButton() {
+        if (this.phase === "ready" || this.phase === "over") this.startGame();
+    }
+
     private startGame() {
         this.clearEnemies();
         this.target = null;
@@ -814,11 +870,12 @@ export default class GameManager extends cc.Component {
 
     private flashMiss() {
         this.playSfx(this.errorClip, 0.5);   // เสียงอื๊ด (พิมพ์ผิด)
-        // กระพริบยานผู้เล่นเป็นสีแดงสั้น ๆ
-        if (!this.playerNode) return;
-        this.playerNode.stopAllActions();
-        this.playerNode.color = cc.color(255, 90, 90);
-        cc.tween(this.playerNode)
+        // กระพริบยานผู้เล่นเป็นสีแดงสั้น ๆ (ใช้รูปจาก editor ถ้ามี)
+        const pNode = (this.playerSprite && this.playerSprite.node) ? this.playerSprite.node : this.playerNode;
+        if (!pNode) return;
+        pNode.stopAllActions();
+        pNode.color = cc.color(255, 90, 90);
+        cc.tween(pNode)
             .to(0.18, { color: cc.color(255, 255, 255) })
             .start();
     }
@@ -860,11 +917,14 @@ export default class GameManager extends cc.Component {
         this.centerLabel.node.active = true;
         if (this._centerBg) this._centerBg.active = true;
         this.centerLabel.string = msg;
+        // ปุ่ม Start โชว์เฉพาะหน้าเริ่ม/เกมจบ (ไม่โชว์ตอนพักด่าน)
+        if (this.startButton) this.startButton.active = (this.phase === "ready" || this.phase === "over");
     }
     private _centerBg: cc.Node = null;
     private hideCenter() {
         if (this.centerLabel) this.centerLabel.node.active = false;
         if (this._centerBg) this._centerBg.active = false;
+        if (this.startButton) this.startButton.active = false;
     }
 
     // ==========================================================
