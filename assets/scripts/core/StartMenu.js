@@ -8,6 +8,7 @@
 // only draws the title + buttons, it never touches the background.
 
 const GameFlow = require('GameFlow');
+const PixelFont = require('PixelFont');
 
 const COL_START = cc.color(70, 160, 255);
 const COL_BACK  = cc.color(120, 120, 130);
@@ -56,6 +57,7 @@ cc.Class({
         l.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
         l.string = str;
         node.color = color;
+        PixelFont.apply(l);
         return l;
     },
 

@@ -321,6 +321,10 @@
     "flipPlayer": false,
     "flipCpu": false,
     "animSpeedScale": 1,
+    "bgm": {
+      "__uuid__": "c76b1a9d-e079-4dd4-9b2d-65a0e33fe9c0"
+    },
+    "bgmVolume": 0.6,
     "footstepSfx": {
       "__uuid__": "d5dd2fbe-a130-4450-867b-27d23240bb69"
     },
@@ -341,10 +345,7 @@
     "pixelsPerUnit": 70,
     "moveEase": 12,
     "idleResetTime": 0.3,
-    "_id": "25hA2aDI9HRqAIe40U/dpW",
-    "bgm": {
-      "__uuid__": "c76b1a9d-e079-4dd4-9b2d-65a0e33fe9c0"
-    }
+    "_id": "25hA2aDI9HRqAIe40U/dpW"
   },
   {
     "__type__": "cc.Canvas",

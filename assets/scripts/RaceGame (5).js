@@ -16,6 +16,7 @@
 // =============================================================
 
 const GameFlow = require('GameFlow');
+const PixelFont = require('PixelFont');
 
 cc.Class({
     extends: cc.Component,
@@ -40,7 +41,7 @@ cc.Class({
 
         // ---- RACE TUNING ----
         raceDistance: { default: 300, tooltip: "Total race length (units). Only affects visual scale, not the BPM bar." },
-        targetBpm: { default: 700, tooltip: "BPM (taps/min) you must average to win. 700 = ~11.7 taps/sec." },
+        targetBpm: { default: 710, tooltip: "BPM (taps/min) you must average to win. 710 = ~11.8 taps/sec." },
         tapsToWin: { default: 360, tooltip: "Alternating taps to reach the finish. Duration = tapsToWin / (targetBpm/60) sec." },
         cpuHandicapSeconds: { default: 1, tooltip: "CPU is this many seconds slower than the exact pace (your win margin)." },
         cpuSpeedVariation: { default: 0.18, tooltip: "How much the CPU speeds up / slows down (0..1)." },
@@ -162,6 +163,7 @@ cc.Class({
         l.lineHeight = fontSize + 6;
         l.horizontalAlign = hAlign || cc.Label.HorizontalAlign.CENTER;
         n.color = color;
+        PixelFont.apply(l);
         return { node: n, label: l };
     },
 
@@ -432,7 +434,7 @@ cc.Class({
             while (anim.timer >= interval) {
                 anim.timer -= interval;
                 anim.index = (anim.index + 1) % frames.length;
-                if (this.footstepSfx && (this._clock - anim.sndT) > 0.05) {
+                if (this.state === "racing" && this.footstepSfx && (this._clock - anim.sndT) > 0.05) {
                     anim.sndT = this._clock;
                     this._playSfx(this.footstepSfx, 0.5);
                 }

@@ -547,7 +547,6 @@
     "moveRange": 180,
     "eyeTopExpand": 0.1,
     "timeLimit": 10,
-    "maxMisses": 3,
     "bgm": {
       "__uuid__": "948012c6-b849-490a-b34d-0d9b3731c11a"
     },
@@ -677,8 +676,10 @@
     "_fontSize": 40,
     "_lineHeight": 40,
     "_enableWrapText": true,
-    "_N$file": null,
-    "_isSystemFontUsed": true,
+    "_N$file": {
+      "__uuid__": "2c69a9c8-315a-4d8d-a4e3-ccdbed4de717"
+    },
+    "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -772,8 +773,10 @@
     "_fontSize": 40,
     "_lineHeight": 40,
     "_enableWrapText": true,
-    "_N$file": null,
-    "_isSystemFontUsed": true,
+    "_N$file": {
+      "__uuid__": "2c69a9c8-315a-4d8d-a4e3-ccdbed4de717"
+    },
+    "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -810,7 +813,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 97.87,
+      "width": 80,
       "height": 50.4
     },
     "_anchorPoint": {

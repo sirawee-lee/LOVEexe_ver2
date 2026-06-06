@@ -18,6 +18,8 @@
 //     on win    -> GameFlow.win();
 //     on lose   -> GameFlow.lose();
 
+const PixelFont = require('PixelFont');
+
 const SEQUENCE = ['needle', 'counterGame', 'dontPress', 'flappy1', 'runner'];
 const MAX_LOVE = 3;            // 3 hearts = 100% (each heart = 1/3)
 
@@ -236,6 +238,7 @@ const GameFlow = {
         l.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
         l.string = str;
         node.color = color;
+        PixelFont.apply(l);
         return l;
     },
 
