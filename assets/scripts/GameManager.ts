@@ -133,6 +133,9 @@ export default class GameManager extends cc.Component {
     private levelupClip: cc.AudioClip = null;
     private bgmId = -1;
 
+    // ---- ฟอนต์ 8-bit (VT323) ใช้กับทุกข้อความในเกม ----
+    private gameFont: cc.TTFFont = null;
+
     // ==========================================================
     onLoad() {
         // ใช้ "ขนาดที่มองเห็นจริง" เพื่อให้เต็มจอทุกอัตราส่วน (ไม่ใช่แค่ design resolution)
@@ -148,6 +151,7 @@ export default class GameManager extends cc.Component {
         }
 
         this.loadAudio();
+        this.loadFont();
 
         this.buildLayers();
         this.buildBackground();
@@ -371,6 +375,7 @@ export default class GameManager extends cc.Component {
             rt.fontSize = 40;
             rt.horizontalAlign = cc.macro.TextAlignment.CENTER;
             rt.string = "";
+            this.applyFont(rt);
             this.inputLabel = rt;
         }
 
@@ -481,6 +486,7 @@ export default class GameManager extends cc.Component {
         const rt = txt.addComponent(cc.RichText);
         rt.fontSize = fontSize;
         rt.horizontalAlign = cc.macro.TextAlignment.CENTER;
+        this.applyFont(rt);
 
         // ความเร็วตกตามด่านปัจจุบัน (สุ่มเล็กน้อยให้มีจังหวะ)
         const speed = this.curSpeed + (Math.random() * 10 - 5);
@@ -820,6 +826,33 @@ export default class GameManager extends cc.Component {
             if (!e) { this.bonusBgmClip = c; this.startBgm(); }
         });
     }
+
+    // ---------- ฟอนต์ 8-bit (VT323) ----------
+    // โหลดฟอนต์จาก resources/fonts แล้วเอาไปใช้กับทุกข้อความที่มีอยู่
+    private loadFont() {
+        const res: any = cc.resources;
+        if (!res) return;
+        res.load("fonts/VT323-Regular", cc.TTFFont, (e: any, font: cc.TTFFont) => {
+            if (e || !font) return;
+            this.gameFont = font;
+            this.applyFontEverywhere();
+        });
+    }
+
+    // ใส่ฟอนต์ให้ Label หรือ RichText หนึ่งตัว (ถ้าฟอนต์โหลดเสร็จแล้ว)
+    private applyFont(comp: cc.Label | cc.RichText) {
+        if (this.gameFont && comp) (comp as any).font = this.gameFont;
+    }
+
+    // ใส่ฟอนต์ให้ "ทุก" ข้อความที่มีอยู่ตอนนี้ (HUD + ช่องพิมพ์ + ข้อความกลาง + คำศัตรูที่ยังลอยอยู่)
+    private applyFontEverywhere() {
+        const labels: (cc.Label | cc.RichText)[] = [
+            this.scoreLabel, this.livesLabel, this.comboLabel, this.wpmLabel,
+            this.levelLabel, this.progressInfo, this.centerLabel, this.inputLabel,
+        ];
+        for (const l of labels) this.applyFont(l);
+        for (const e of this.enemies) if (e.text) this.applyFont(e.text);
+    }
     // เล่นเพลงพื้นหลัง (หยุดเพลงเดิมก่อน) — clip null = เงียบ
     private playBgm(clip: cc.AudioClip) {
         if (this.bgmId >= 0) { cc.audioEngine.stop(this.bgmId); this.bgmId = -1; }
@@ -912,6 +945,7 @@ export default class GameManager extends cc.Component {
             lb.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
             lb.verticalAlign = cc.Label.VerticalAlign.CENTER;
             n.color = cc.color(235, 245, 255);
+            this.applyFont(lb);
             this.centerLabel = lb;
         }
         this.centerLabel.node.active = true;
@@ -948,6 +982,7 @@ export default class GameManager extends cc.Component {
         lb.lineHeight = size + 6;
         lb.horizontalAlign = align;
         lb.string = str;
+        this.applyFont(lb);
         return lb;
     }
 
