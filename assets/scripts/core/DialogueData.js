@@ -84,63 +84,63 @@ module.exports = {
         // ── Prof. Hung (Delta) → CATCH / dress-up game ────────
         professor_pre: {
             lines: [
-                { speaker: 'Prof. Hung', text: "AH. The suitor arrives at Delta Building! *dramatic cape swirl that is somehow happening indoors*" },
-                { speaker: 'EECS Boy',   text: "(He swirled. He doesn't even have a cape. HOW did he swirl.)" },
-                { speaker: 'Prof. Hung', text: "Love is chaos raining from the sky — flowers and garbage alike, all at once! You must CATCH what matters and let the rest fall away." },
-                { speaker: 'Prof. Hung', text: "Catch the roses, the sharp shirt, the open heart. Dodge the junk — the bad cologne, the ego, the excuses. Dress for the soul you wish to be!" },
-                { speaker: 'EECS Boy',   text: "(Catch the good, dodge the bad. Like code review, but the bugs fall on your head.)" },
-                { speaker: 'Prof. Hung', text: "Hands ready! Heart open! The sky is falling — BEGIN!" },
+                { speaker: 'Prof. Hung', text: "AH — the suitor reaches Delta! *dramatic cape swirl that is, again, indoors and entirely capeless*" },
+                { speaker: 'EECS Boy',   text: "(He swirled. There is no cape. I have so many questions and exactly zero answers.)" },
+                { speaker: 'Prof. Hung', text: "Here we do not CATCH love — we TYPE it into being! Words rain from the sky: html, css, js, the sacred syntax." },
+                { speaker: 'Prof. Hung', text: "Blast each word by typing it before it lands. Miss three, and your courtship compiles with ERRORS!" },
+                { speaker: 'EECS Boy',   text: "(Falling code words. Type fast or fail. ...Four years of 3 a.m. labs — this is my moment.)" },
+                { speaker: 'Prof. Hung', text: "Clear all five waves; prove your fingers — and your heart — never falter. Hands ready... BEGIN!" },
             ],
         },
         professor_post_win: {
             lines: [
-                { speaker: 'Prof. Hung', text: "MAGNIFICENT! You caught what mattered and let the junk fall like a dropped semester." },
-                { speaker: 'EECS Boy',   text: "(I have never been called magnificent. I'd like it on a certificate, please. ...Also, when did I get a bow tie?)" },
-                { speaker: 'Prof. Hung', text: "Anyone can grab everything. A wise heart knows what to keep. That, my boy, is character." },
-                { speaker: 'Prof. Hung', text: "Now GO. Mei waits up in the library — has been, longer than she'd admit. Do not keep a heart like that refreshing her notifications. CURTAIN!" },
+                { speaker: 'Prof. Hung', text: "MAGNIFICENT! Five waves, not one dropped word. Your WPM rivals your devotion!" },
+                { speaker: 'EECS Boy',   text: "(Called magnificent for typing fast. Putting this on my résumé. ...Also, when did I get a bow tie?)" },
+                { speaker: 'Prof. Hung', text: "Speed without panic. Precision under pressure. THAT, my boy, is character." },
+                { speaker: 'Prof. Hung', text: "Now GO. Mei waits at the library — has been, longer than she'd admit. Type your way to her, hero. CURTAIN!" },
             ],
         },
         professor_post_lose: {
             lines: [
-                { speaker: 'Prof. Hung', text: "Tragedy! You caught the garbage and dropped the treasure! A wardrobe malfunction of the SOUL!" },
-                { speaker: 'EECS Boy',   text: "(I caught a falling banana peel with great confidence. That was, in hindsight, not the move.)" },
-                { speaker: 'Prof. Hung', text: "But every great romance has a second act! Steady your eyes, catch what matters — and return to me, hero. The sky is endlessly generous with chaos." },
+                { speaker: 'Prof. Hung', text: "TRAGEDY! The words buried you — a syntax error of the SOUL!" },
+                { speaker: 'EECS Boy',   text: "(Lost a typing game. As an EECS student. The shame is... remarkably thorough.)" },
+                { speaker: 'Prof. Hung', text: "But every great romance has a second draft! Steady those fingers and return — the keyboard forgives, unlike deadlines." },
             ],
         },
         professor_done: {
             lines: [
-                { speaker: 'Prof. Hung', text: "The magnificent one returns! Still impeccably sorted, inside and out. Off with you — your stage is the lakeside now. *approving swirl*" },
-                { speaker: 'EECS Boy',   text: "(He swirled again. I'm starting to think the cape is just spiritual.)" },
+                { speaker: 'Prof. Hung', text: "The fast-fingered one returns! Syntax flawless, heart steady. Off to the library — your stage awaits. *approving swirl*" },
+                { speaker: 'EECS Boy',   text: "(Still swirling. I've made peace with the cape being purely spiritual.)" },
             ],
         },
 
         // ── Niu Pai (XCB food stall) → market dash (placeholder) ──
         niupai_pre: {
             lines: [
-                { speaker: 'Stall Owner', text: "Kid! KID — over here! That black dog, Niu Pai? She chased off a bag-snatcher behind the XCB stalls, and now his three nasty strays have HER cornered!" },
-                { speaker: 'EECS Boy',    text: "(A damsel in distress. Except the damsel is a dog. ...Somehow this is the bravest thing I'll do all semester.)" },
-                { speaker: 'Stall Owner', text: "She's the gutsiest mutt on campus, but three-on-one ain't fair. Help her out, and you'll have a friend who'd walk through fire for you." },
-                { speaker: 'EECS Boy',    text: "Hang on, Niu Pai — backup's coming! (Mei said win over the ones who matter. Time to be a hero.)" },
+                { speaker: 'Stall Owner', text: "Ay, kid! Niu Pai's been staking out the XCB McDonald's all afternoon — and she's not the only stray with an appetite." },
+                { speaker: 'EECS Boy',    text: "(A food court. A hungry dog. Rival strays circling. My EECS degree prepared me for precisely none of this.)" },
+                { speaker: 'Stall Owner', text: "Get her the right order through that crowd without the other dogs swiping it, and you've got a friend for life. Fumble it... good luck." },
+                { speaker: 'EECS Boy',    text: "Alright, Niu Pai — operation Happy Meal. Stay close. (Win the dog, win Mei. Let's eat.)" },
             ],
         },
         niupai_post_win: {
             lines: [
-                { speaker: 'EECS Boy',    text: "Easy now — I've got you. Those strays won't bother you again." },
-                { speaker: 'Niu Pai',     text: "*limps over, headbutts your shin, then plants herself at your side like she's been assigned to you by destiny*" },
-                { speaker: 'Stall Owner', text: "Ha! She's chosen you, kid. Niu Pai goes where YOU go now — that kind of loyalty, you can't buy." },
-                { speaker: 'EECS Boy',    text: "(Came to campus chasing a girl, leaving with a dog. ...Honestly? Great trade.) Come on, partner — let's keep going." },
+                { speaker: 'EECS Boy',    text: "Order secured, dignity mostly intact. All yours, girl — fresh off the XCB grill." },
+                { speaker: 'Niu Pai',     text: "*demolishes it in four seconds flat, then plants herself at your side like she's been assigned to you by destiny*" },
+                { speaker: 'Stall Owner', text: "Ha! She's chosen you, kid. Niu Pai goes where YOU go now — loyalty like that, you can't buy." },
+                { speaker: 'EECS Boy',    text: "(Came to campus chasing a girl, leaving with a dog. Honestly? Great trade.) Two of Mei's favorites won over — let's move, partner." },
             ],
         },
         niupai_post_lose: {
             lines: [
-                { speaker: 'Stall Owner', text: "Agh — the strays scattered and Niu Pai bolted before you reached her! She's okay, but she's not sure of you yet. Catch your breath and try again." },
-                { speaker: 'EECS Boy',    text: "(Failed a dog rescue. New personal low. Re-running it — nobody leaves Niu Pai behind.)" },
+                { speaker: 'Stall Owner', text: "Oof — the strays got the food AND your pride. Niu Pai's not sold on you yet, but she's watching." },
+                { speaker: 'EECS Boy',    text: "(Beaten by gravity, gravy, and three feral dogs. Running it back — nobody out-orders me.)" },
             ],
         },
         niupai_done: {
             lines: [
-                { speaker: 'Niu Pai',  text: "*BORK!* *does a triumphant victory lap around your legs* (Translation: 'still got your back, nerd')" },
-                { speaker: 'EECS Boy', text: "(My emotional support quadruped, my bravest wingman. Best decision of the whole semester.)" },
+                { speaker: 'Niu Pai',  text: "*BORK!* *trots a happy circle around your legs, then glances pointedly at the golden arches* (Translation: 'again?')" },
+                { speaker: 'EECS Boy', text: "(My emotional support quadruped. My wallet fears her. My heart adores her.)" },
             ],
         },
 
@@ -150,7 +150,7 @@ module.exports = {
                 { speaker: 'Mei',      text: "Hey — you actually found me, right outside the library. Romantic, in a nerdy way. But you skipped a few side quests, EECS boy. 😏" },
                 { speaker: 'EECS Boy', text: "(She called it side quests. She GETS me. Marry her immediately— okay, slow down, brain.)" },
                 { speaker: 'Mei',      text: "Three people made me who I am, and they all want a word with you first." },
-                { speaker: 'Mei',      text: "My dad's down by the lake — pass his rhythm test. Niu Pai runs the food stall up north — win the dog over. And Prof. Hung at Delta wants to see how you handle... falling objects." },
+                { speaker: 'Mei',      text: "My dad's down by the lake — pass his rhythm test. Niu Pai's at the food stalls up north — win the dog over. And Prof. Hung at Delta wants to see how fast your fingers really are." },
                 { speaker: 'Mei',      text: "Clear all three. THEN come back here. I promise the boss music is worth it. 💕" },
             ],
         },

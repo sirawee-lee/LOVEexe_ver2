@@ -1,0 +1,414 @@
+[
+  {
+    "__type__": "cc.SceneAsset",
+    "_name": "",
+    "_objFlags": 0,
+    "_native": "",
+    "scene": {
+      "__id__": 1
+    }
+  },
+  {
+    "__type__": "cc.Scene",
+    "_objFlags": 0,
+    "_parent": null,
+    "_children": [
+      {
+        "__id__": 2
+      }
+    ],
+    "_active": true,
+    "_components": [],
+    "_prefab": null,
+    "_opacity": 255,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 0,
+      "height": 0
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
+    },
+    "_trs": {
+      "__type__": "TypedArray",
+      "ctor": "Float64Array",
+      "array": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "_is3DNode": true,
+    "_groupIndex": 0,
+    "groupIndex": 0,
+    "autoReleaseAssets": false,
+    "_id": "a654e9a1-2e9b-4f46-bfc2-c2cf248a7f84"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "Canvas",
+    "_objFlags": 0,
+    "_parent": {
+      "__id__": 1
+    },
+    "_children": [
+      {
+        "__id__": 3
+      }
+    ],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 5
+      },
+      {
+        "__id__": 6
+      }
+    ],
+    "_prefab": null,
+    "_opacity": 255,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 960,
+      "height": 640
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_trs": {
+      "__type__": "TypedArray",
+      "ctor": "Float64Array",
+      "array": [
+        480,
+        320,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "_eulerAngles": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_skewX": 0,
+    "_skewY": 0,
+    "_is3DNode": false,
+    "_groupIndex": 0,
+    "groupIndex": 0,
+    "_id": "a5esZu+45LA5mBpvttspPD"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "Niu Pai Node",
+    "_objFlags": 0,
+    "_parent": {
+      "__id__": 2
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 4
+      }
+    ],
+    "_prefab": null,
+    "_opacity": 255,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 0,
+      "height": 0
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_trs": {
+      "__type__": "TypedArray",
+      "ctor": "Float64Array",
+      "array": [
+        -480,
+        -320,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "_eulerAngles": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_skewX": 0,
+    "_skewY": 0,
+    "_is3DNode": false,
+    "_groupIndex": 0,
+    "groupIndex": 0,
+    "_id": "d6fdZtYuRMaLtx4+BwxJKt"
+  },
+  {
+    "__type__": "b7dd70ZPGZN8Y8db/nD+aE/",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 3
+    },
+    "_enabled": true,
+    "bgm": null,
+    "sfxCorrect": null,
+    "sfxWrong": null,
+    "playerSheet": {
+      "__uuid__": "eed3281a-fffa-4b9d-8f66-59f9594c8d10"
+    },
+    "playerFrameW": 32,
+    "playerFrameH": 32,
+    "playerStartPosition": {
+      "__type__": "cc.Vec2",
+      "x": 64,
+      "y": 64
+    },
+    "playerWalkSpeed": 130,
+    "playerCarefulSpeed": 70,
+    "playerStartDirection": "down",
+    "playerColliderWidthRatio": 0.4,
+    "playerColliderHeightRatio": 0.4,
+    "playerColliderYOffsetRatio": -0.12,
+    "playerLinearDamping": 0,
+    "niuPaiSheet": {
+      "__uuid__": "a3cd3f2e-e25f-4d24-9609-f1e80fb0810e"
+    },
+    "niuPaiFrameW": 32,
+    "niuPaiFrameH": 32,
+    "niuPaiFollowSpeed": 130,
+    "niuPaiFollowDistance": 10,
+    "niuPaiStopDistance": 10,
+    "niuPaiRestoreFollowDistance": 50,
+    "niuPaiPathRefreshInterval": 0.25,
+    "niuPaiWaypointReachDistance": 8,
+    "niuPaiSpawnOffset": {
+      "__type__": "cc.Vec2",
+      "x": -32,
+      "y": -24
+    },
+    "niuPaiColliderWidthRatio": 0.4,
+    "niuPaiColliderHeightRatio": 0.4,
+    "niuPaiColliderYOffsetRatio": -0.12,
+    "niuPaiLinearDamping": 0,
+    "blackDogSheet": {
+      "__uuid__": "a3cd3f2e-e25f-4d24-9609-f1e80fb0810e"
+    },
+    "blackDogCount": 2,
+    "blackDogSpawnMinRadiusTiles": 4,
+    "blackDogSpawnRadiusTiles": 8,
+    "blackDogFrameW": 32,
+    "blackDogFrameH": 32,
+    "blackDogWanderSpeed": 60,
+    "blackDogChaseSpeed": 110,
+    "blackDogChaseRadius": 320,
+    "blackDogPathRefreshInterval": 0.3,
+    "blackDogWanderRefreshInterval": 1.5,
+    "blackDogWaypointReachDistance": 8,
+    "blackDogColliderWidthRatio": 0.5,
+    "blackDogColliderHeightRatio": 0.5,
+    "blackDogColliderYOffsetRatio": -0.12,
+    "blackDogLinearDamping": 8,
+    "blackDogDamageHp": 1,
+    "blackDogAttackInterval": 1,
+    "blackDogStunAfterNiuPaiHit": 0.5,
+    "blackDogPatrolX": 18,
+    "blackDogPatrolY": 31,
+    "blackDogRobDelay": 3,
+    "blackDogRobReachDistance": 24,
+    "tunnelBlackDogSpawnDelay": 5,
+    "tunnelBlackDogSpawnCount": 1,
+    "tunnelBlackDogSpawnJitter": 20,
+    "mainTilemap": {
+      "__uuid__": "99dc7c35-14fc-4af6-b211-16a85ccbf978"
+    },
+    "tunnelTilemap": {
+      "__uuid__": "cabc6593-6474-4007-abaf-6af08eae00d0"
+    },
+    "mainTilemapOffset": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
+    },
+    "tunnelTilemapOffset": {
+      "__type__": "cc.Vec2",
+      "x": 2000,
+      "y": 0
+    },
+    "mapCols": 24,
+    "mapRows": 36,
+    "mapTileSize": 32,
+    "mapPropertyTileSize": 16,
+    "clampPlayerToMap": true,
+    "tunnelMapCols": 24,
+    "tunnelMapRows": 6,
+    "tunnelEntranceWidth": 16,
+    "tunnelEntranceHeight": 32,
+    "showTeleportDebug": false,
+    "logTeleportDebug": false,
+    "colliderLayerName": "ConsistentCollider",
+    "showColliderDebug": false,
+    "showPathGridDebug": true,
+    "gameCamera": null,
+    "cameraZoomRatio": 2,
+    "cameraFollowOffset": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
+    },
+    "boundCameraToMap": true,
+    "orderPromptText": "Press [E] to order",
+    "orderDialogText": "McDonald ordering started.",
+    "showOrderDebug": true,
+    "mcDonaldRegionSprite": {
+      "__uuid__": "a8ba4ddd-82e2-4f00-94b5-2b84dcb2e287"
+    },
+    "orderMenuWidth": 300,
+    "orderMenuHeight": 125,
+    "orderDialogueHeight": 100,
+    "orderChoiceLineHeight": 24,
+    "normieSheet": {
+      "__uuid__": "7d0791c2-8c23-4725-b9b2-002a22d19f89"
+    },
+    "normieFrameW": 32,
+    "normieFrameH": 32,
+    "normieTotalCount": 20,
+    "normieWalkSpeed": 36,
+    "normieDirectionMinSeconds": 2,
+    "normieDirectionMaxSeconds": 5,
+    "normieIdleChance": 0.2,
+    "normieColliderWidthRatio": 0.55,
+    "normieColliderHeightRatio": 0.65,
+    "normieColliderYOffsetRatio": -0.12,
+    "normieLinearDamping": 8,
+    "normieQueueMinCount": 5,
+    "normieQueueMaxCount": 7,
+    "normieQueueSpacingTiles": 1,
+    "normieQueueDirection": {
+      "__type__": "cc.Vec2",
+      "x": -1,
+      "y": 0
+    },
+    "normieOrderMinSeconds": 2,
+    "normieOrderMaxSeconds": 5,
+    "normieRefillMinCount": 1,
+    "normieRefillMaxCount": 2,
+    "playerCutSuccessRate": 0.8,
+    "niuPaiQueuePassRate": 0.95,
+    "applePieSprite": {
+      "__uuid__": "3fd93a05-617e-4214-82db-7a8493df58a7"
+    },
+    "bigMacSprite": {
+      "__uuid__": "edde6db0-7e55-4c37-8cc9-2e817eea1900"
+    },
+    "mcFlurrySprite": {
+      "__uuid__": "d2ce7e35-f45e-4b21-8403-0cddb21c9e4c"
+    },
+    "spoilDuration": 60,
+    "requireFreshFoodToWin": true,
+    "bigMacNiuPaiHealRange": 56,
+    "bigMacBaitHp": 12,
+    "bigMacBaitAttractRadius": 128,
+    "bigMacBaitSize": 28,
+    "mcFlurryExplosionDelay": 1.5,
+    "mcFlurryExplosionRangeTiles": 1,
+    "mcFlurryStunSeconds": 2,
+    "mcMaxHp": 12,
+    "niuPaiMaxHp": 12,
+    "hudHeight": 40,
+    "hudIconSize": 16,
+    "_id": "328Urpp5pFnIZ2JMn33V5d"
+  },
+  {
+    "__type__": "cc.Canvas",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 2
+    },
+    "_enabled": true,
+    "_designResolution": {
+      "__type__": "cc.Size",
+      "width": 960,
+      "height": 640
+    },
+    "_fitWidth": false,
+    "_fitHeight": true,
+    "_id": "59Cd0ovbdF4byw5sbjJDx7"
+  },
+  {
+    "__type__": "cc.Widget",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 2
+    },
+    "_enabled": true,
+    "alignMode": 1,
+    "_target": null,
+    "_alignFlags": 45,
+    "_left": 0,
+    "_right": 0,
+    "_top": 0,
+    "_bottom": 0,
+    "_verticalCenter": 0,
+    "_horizontalCenter": 0,
+    "_isAbsLeft": true,
+    "_isAbsRight": true,
+    "_isAbsTop": true,
+    "_isAbsBottom": true,
+    "_isAbsHorizontalCenter": true,
+    "_isAbsVerticalCenter": true,
+    "_originalWidth": 0,
+    "_originalHeight": 0,
+    "_id": "29zXboiXFBKoIV4PQ2liTe"
+  }
+]

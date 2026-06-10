@@ -12,6 +12,8 @@ var RUN_SPEED  = 340;  // holding Shift — sprint (faster than normal)
 var ZOOM       = 2;    // world scale — zooms in, eliminates edge voids
 
 var StoryState = require('StoryState');
+var PixelFont  = require('PixelFont');   // VT323 8-bit font for the overworld HUD text
+require('PauseMenu');   // registers the global ESC pause menu (once, survives scene loads)
 
 // npcId → display name for the "[E] Talk to ..." hint
 var NPC_NAMES = { father: 'Mr. Wang', professor: 'Prof. Hung', niupai: 'Niu Pai', mei: 'Mei' };
@@ -222,8 +224,9 @@ cc.Class({
         var hintLbl = new cc.Node('HintText');
         var hl = hintLbl.addComponent(cc.Label);
         hl.string    = '';
-        hl.fontSize  = 13;
+        hl.fontSize  = 19;
         hl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        PixelFont.apply(hl);
         hintLbl.color = cc.color(255, 240, 80);
         hintLbl.setPosition(0, 0);
         hintNode.addChild(hintLbl, 1);
@@ -233,14 +236,30 @@ cc.Class({
         var locNode = new cc.Node('LocName');
         var locLbl  = locNode.addComponent(cc.Label);
         locLbl.string   = '';
-        locLbl.fontSize = 12;
+        locLbl.fontSize = 16;
         locLbl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        PixelFont.apply(locLbl);
         locNode.color  = cc.color(200, 220, 255);
         locNode.setPosition(0, self._H / 2 - 18);
         locNode.opacity = 0;
         self.node.addChild(locNode, 5);
         self._locNode  = locNode;
         self._locLabel = locLbl;
+
+        // ── Hearts HUD (top-left) — reflects StoryState.lives across all games ──
+        self._heartNodes = [];
+        var heartsRoot = new cc.Node('Hearts');
+        self.node.addChild(heartsRoot, 6);
+        for (var hi = 0; hi < 3; hi++) {
+            var heartNode = new cc.Node('Heart' + hi);
+            var hLbl = heartNode.addComponent(cc.Label);
+            hLbl.string   = '♥';
+            hLbl.fontSize = 26;
+            heartNode.color = cc.color(231, 76, 60);
+            heartsRoot.addChild(heartNode);
+            self._heartNodes.push(heartNode);
+        }
+        self._updateHearts();
 
         // Input
         self._keys = {};
@@ -253,6 +272,11 @@ cc.Class({
     },
 
     onEnable: function () {
+        // Kill any leftover minigame music. The 5 boss games play their BGM on the
+        // MUSIC channel (cc.audioEngine.playMusic) and don't stop it on scene exit,
+        // so it would overlap the overworld BGM. The overworld BGM below uses the
+        // separate effect channel (play → _bgmId), so stopMusic() won't touch it.
+        cc.audioEngine.stopMusic();
         // Resume BGM when returning from minigame
         if (this.bgm && this._bgmId < 0) {
             this._bgmId = cc.audioEngine.play(this.bgm, true, 0.6);
@@ -307,6 +331,29 @@ cc.Class({
         return inside;
     },
 
+    // Redraw the 3-heart HUD from StoryState.lives (full ♥ vs spent ♡). Repinned
+    // to the real visible edges each call so it tracks window resizes.
+    _updateHearts: function () {
+        if (!this._heartNodes) return;
+        var vis = cc.view.getVisibleSize();
+        var x0 = -vis.width / 2 + 24, y0 = vis.height / 2 - 22;
+        for (var i = 0; i < this._heartNodes.length; i++) {
+            var n = this._heartNodes[i];
+            if (!n || !n.isValid) continue;
+            n.setPosition(x0 + i * 28, y0);
+            var lbl = n.getComponent(cc.Label);
+            if (i < StoryState.lives) {
+                if (lbl) lbl.string = '♥';
+                n.color = cc.color(231, 76, 60);
+                n.opacity = 255;
+            } else {
+                if (lbl) lbl.string = '♡';
+                n.color = cc.color(120, 120, 130);
+                n.opacity = 180;
+            }
+        }
+    },
+
     // Remove an NPC (e.g. the XCB dog once Niu Pai joins the player): deactivate
     // the node so it both disappears AND stops registering its talk zone.
     _hideNpc: function (id) {
@@ -343,6 +390,8 @@ cc.Class({
     // ── Update ────────────────────────────────────────────────
     update: function (dt) {
         var self = this;
+
+        self._updateHearts();   // keep the heart HUD synced + pinned each frame
 
         // Freeze the overworld while a dialogue is on screen
         if (StoryState.dialogueActive) {

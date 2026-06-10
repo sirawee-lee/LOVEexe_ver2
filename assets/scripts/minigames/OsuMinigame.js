@@ -11,6 +11,8 @@ var WIN_THRESHOLD = 23;
 var NOTE_INTERVAL = 550;   // ms ≈ 109 BPM (CPR rate: 100-120/min)
 var NOTE_MARGIN   = 80;    // keep notes away from canvas edges
 
+var PixelFont = require('PixelFont');   // VT323 8-bit font for all the game's text
+
 cc.Class({
     extends: cc.Component,
 
@@ -40,6 +42,7 @@ cc.Class({
             lb.lineHeight       = 22;
             lb.horizontalAlign  = cc.Label.HorizontalAlign.CENTER;
             lb.verticalAlign    = cc.Label.VerticalAlign.CENTER;
+            PixelFont.apply(lb);
             ln.color  = cc.Color.WHITE;
             ln.active = false;
             self.node.addChild(ln, 2);
@@ -93,6 +96,7 @@ cc.Class({
         l.fontSize         = size;
         l.lineHeight       = size + 2;
         l.horizontalAlign  = cc.Label.HorizontalAlign.CENTER;
+        PixelFont.apply(l);
         n.color = color || cc.Color.WHITE;
         n.setPosition(pos);
         this.node.addChild(n, 3);

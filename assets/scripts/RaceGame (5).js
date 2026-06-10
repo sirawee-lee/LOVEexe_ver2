@@ -16,6 +16,9 @@
 // =============================================================
 
 const GameFlow = require('GameFlow');
+const PixelFont = require('PixelFont');
+
+const PT_CHECKPOINT = 250;   // live points per quarter-track checkpoint (3 total)
 
 cc.Class({
     extends: cc.Component,
@@ -40,7 +43,7 @@ cc.Class({
 
         // ---- RACE TUNING ----
         raceDistance: { default: 300, tooltip: "Total race length (units). Only affects visual scale, not the BPM bar." },
-        targetBpm: { default: 700, tooltip: "BPM (taps/min) you must average to win. 700 = ~11.7 taps/sec." },
+        targetBpm: { default: 710, tooltip: "BPM (taps/min) you must average to win. 710 = ~11.8 taps/sec." },
         tapsToWin: { default: 360, tooltip: "Alternating taps to reach the finish. Duration = tapsToWin / (targetBpm/60) sec." },
         cpuHandicapSeconds: { default: 1, tooltip: "CPU is this many seconds slower than the exact pace (your win margin)." },
         cpuSpeedVariation: { default: 0.18, tooltip: "How much the CPU speeds up / slows down (0..1)." },
@@ -162,6 +165,7 @@ cc.Class({
         l.lineHeight = fontSize + 6;
         l.horizontalAlign = hAlign || cc.Label.HorizontalAlign.CENTER;
         n.color = color;
+        PixelFont.apply(l);
         return { node: n, label: l };
     },
 
@@ -220,6 +224,7 @@ cc.Class({
         this.tapCount = 0;
         this.tapTimes.length = 0;
         this.lastTapTime = -10;
+        this._cpAwarded = 0;       // quarter-track checkpoints awarded this race
 
         this.lastDir = null;
         this.leftDown = false;
@@ -279,6 +284,13 @@ cc.Class({
 
         // Move a fixed distance per tap -> 300 taps reaches the finish.
         this.targetProgress = Math.min(this.raceDistance, this.targetProgress + this.distancePerTap);
+
+        // Live +points crossing each quarter (1/4, 2/4, 3/4); the finish is the clear bonus.
+        while (this._cpAwarded < 3 &&
+               this.targetProgress >= this.raceDistance * (this._cpAwarded + 1) * 0.25) {
+            this._cpAwarded++;
+            GameFlow.addScore(PT_CHECKPOINT);
+        }
 
         this.tapCount++;
         this.lastTapTime = this._clock;
@@ -432,7 +444,7 @@ cc.Class({
             while (anim.timer >= interval) {
                 anim.timer -= interval;
                 anim.index = (anim.index + 1) % frames.length;
-                if (this.footstepSfx && (this._clock - anim.sndT) > 0.05) {
+                if (this.state === "racing" && this.footstepSfx && (this._clock - anim.sndT) > 0.05) {
                     anim.sndT = this._clock;
                     this._playSfx(this.footstepSfx, 0.5);
                 }

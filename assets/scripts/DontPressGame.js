@@ -7,7 +7,9 @@
 // Wrong action = You Lose. Clear every level = You Win.
 // Click the button (or press Space). After a win/lose, tap the button to play again.
 
-const GameFlow = require('GameFlow');
+const GameFlow = require("GameFlow");
+
+const PT_LEVEL = 150;   // live points awarded for each level passed
 
 cc.Class({
   extends: cc.Component,
@@ -49,36 +51,48 @@ cc.Class({
     bgmVolume: { default: 0.6, tooltip: "Music volume 0..1" },
 
     // Sound effects (drag an audio clip into each)
-    pressSfx: { default: null, type: cc.AudioClip, tooltip: "Plays when the button is pressed" },
-    passSfx:  { default: null, type: cc.AudioClip, tooltip: "Plays when a level is passed (Nice!)" },
-    failSfx:  { default: null, type: cc.AudioClip, tooltip: "Plays when you lose" },
+    pressSfx: {
+      default: null,
+      type: cc.AudioClip,
+      tooltip: "Plays when the button is pressed",
+    },
+    passSfx: {
+      default: null,
+      type: cc.AudioClip,
+      tooltip: "Plays when a level is passed (Nice!)",
+    },
+    failSfx: {
+      default: null,
+      type: cc.AudioClip,
+      tooltip: "Plays when you lose",
+    },
   },
 
   onLoad() {
     // Original level set (rule per level)
     this.levels = [
       { prompt: "DON'T press the button.", required: 0, timeLimit: 4 },
-      { prompt: "Good. Now press it ONCE.", required: 1, timeLimit: 6 },
-      { prompt: "Press the button 3 times.", required: 3, timeLimit: 6 },
+      { prompt: "Good. Now press it ONCE.", required: 1, timeLimit: 3 },
+      { prompt: "Press the button 3 times.", required: 3, timeLimit: 4 },
       {
         prompt: "Press the number of sides on a triangle.",
         required: 3,
-        timeLimit: 8,
+        timeLimit: 4,
       },
       {
         prompt: "It's a trap. Do NOT press anything.",
         required: 0,
-        timeLimit: 5,
+        timeLimit: 3,
       },
       {
         prompt: "Press the number of corners on a square.",
         required: 4,
-        timeLimit: 8,
+        timeLimit: 4,
       },
       {
         prompt: "Last one... whatever happens, DON'T press!",
         required: 0,
-        timeLimit: 6,
+        timeLimit: 3,
       },
     ];
 
@@ -90,7 +104,7 @@ cc.Class({
     cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
 
     this._handoff = false;
-    GameFlow.onEnterGame('dontPress', this.node);
+    GameFlow.onEnterGame("dontPress", this.node);
     this._playBgm();
 
     this.startLevel();
@@ -154,7 +168,7 @@ cc.Class({
   },
 
   onPress() {
-    if (this._handoff) return;          // flow is taking over -> ignore taps
+    if (this._handoff) return; // flow is taking over -> ignore taps
     if (this.phase === "over") {
       this.restartGame();
       return;
@@ -189,6 +203,7 @@ cc.Class({
     this.phase = "between";
     this.stopPulse();
     this._sfx(this.passSfx);
+    GameFlow.addScore(PT_LEVEL);          // live +points per level passed
     if (this.resultLabel) {
       this.resultLabel.string = "Nice!";
       this.resultLabel.node.color = cc.Color.GREEN;
@@ -216,7 +231,7 @@ cc.Class({
     if (this.countLabel) this.countLabel.string = "";
 
     this._handoff = true;
-    this.scheduleOnce(() => GameFlow.win(), 1.0);   // -> next game
+    this.scheduleOnce(() => GameFlow.win(), 1.0); // -> next game
   },
 
   fail(reason) {
@@ -231,7 +246,7 @@ cc.Class({
     if (this.timerLabel) this.timerLabel.string = "";
 
     this._handoff = true;
-    this.scheduleOnce(() => GameFlow.lose(), 1.2);   // -> Try Again
+    this.scheduleOnce(() => GameFlow.lose(), 1.2); // -> Try Again
   },
 
   restartGame() {

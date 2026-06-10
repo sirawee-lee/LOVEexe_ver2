@@ -12,6 +12,7 @@
 
 var StoryState   = require('StoryState');
 var DialogueData = require('DialogueData');
+var PixelFont    = require('PixelFont');   // VT323 8-bit font for all dialogue text
 
 var ST = { IDLE: 0, TYPING: 1, WAIT_ADVANCE: 2, WAIT_CHOICE: 3 };
 
@@ -101,8 +102,9 @@ cc.Class({
         // Speaker name (top-left)
         var nameNode = new cc.Node('Speaker');
         var nameLbl  = nameNode.addComponent(cc.Label);
-        nameLbl.fontSize   = 18;
-        nameLbl.lineHeight = 20;
+        nameLbl.fontSize   = 26;
+        nameLbl.lineHeight = 28;
+        PixelFont.apply(nameLbl);
         nameNode.color     = cc.color(190, 55, 95);   // deep rose — reads on the light frame
         nameNode.anchorX   = 0;
         nameNode.setPosition(-frameW / 2 + 34, frameH / 2 - 24);
@@ -112,10 +114,11 @@ cc.Class({
         // Body text (wraps within the frame)
         var bodyNode = new cc.Node('Body');
         var bodyLbl  = bodyNode.addComponent(cc.Label);
-        bodyLbl.fontSize      = 16;
-        bodyLbl.lineHeight    = 23;
+        bodyLbl.fontSize      = 22;
+        bodyLbl.lineHeight    = 30;
         bodyLbl.overflow      = cc.Label.Overflow.RESIZE_HEIGHT;
         bodyLbl.enableWrapText = true;
+        PixelFont.apply(bodyLbl);
         bodyNode.color   = cc.color(62, 48, 46);      // dark warm brown for readability
         bodyNode.anchorX = 0;
         bodyNode.anchorY = 1;
@@ -128,7 +131,8 @@ cc.Class({
         var arrow = new cc.Node('Arrow');
         var aLbl  = arrow.addComponent(cc.Label);
         aLbl.string   = '▼ space';
-        aLbl.fontSize = 12;
+        aLbl.fontSize = 16;
+        PixelFont.apply(aLbl);
         arrow.color   = cc.color(150, 90, 110);
         arrow.opacity = 0;
         arrow.setPosition(frameW / 2 - 56, -frameH / 2 + 16);
@@ -278,10 +282,11 @@ cc.Class({
             var tn = new cc.Node('txt');
             var tl = tn.addComponent(cc.Label);
             tl.string     = choice.text;
-            tl.fontSize   = 15;
-            tl.lineHeight = 17;
+            tl.fontSize   = 20;
+            tl.lineHeight = 23;
             tl.overflow   = cc.Label.Overflow.SHRINK;
             tl.enableWrapText = true;
+            PixelFont.apply(tl);
             tn.setContentSize(BW - 40, BH - 12);
             tn.color = pink ? cc.color(95, 30, 55) : cc.color(45, 45, 50);
             bn.addChild(tn, 1);

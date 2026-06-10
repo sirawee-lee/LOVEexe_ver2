@@ -10,8 +10,14 @@
 //   niupai    NPC → market dash       (not built → resolved in dialogue)
 //   mei       NPC → lake finale       (not built → placeholder; LOCKED until the 3 are won)
 
-var StoryState = require('StoryState');
-var GameFlow   = require('GameFlow');   // the 5-game boss rush (scene-flow module)
+var StoryState   = require('StoryState');
+var GameFlow     = require('GameFlow');      // the 5-game boss rush (scene-flow module)
+var EndingScreen = require('EndingScreen');  // game-over / finale overlays
+
+// XiaoChiBu.fire is now fully wired (NiuPaiMinigame component + assets), pulled from
+// the XiaoChiBu_Game branch — so the Niu Pai NPC launches the REAL dog minigame as
+// its own scene. (Set back to false to fall back to the dialogue placeholder.)
+var NIUPAI_SCENE_READY = true;
 
 cc.Class({
     extends: cc.Component,
@@ -46,10 +52,26 @@ cc.Class({
             }, self);
         }
 
-        // Opening cutscene — meet Mei once at game start
+        // Opening cutscene / returning from a minigame
         self.scheduleOnce(function () {
+            // Out of hearts already? Re-show game over (covers a reload while dead).
+            if (StoryState.gameOver) { EndingScreen.showGameOver(); return; }
             if (!self._dm) return;
-            if (StoryState.finalCleared && !StoryState.flags.endingShown) {
+            if (StoryState.lastResult) {
+                // Returned from a scene-minigame (typing / dog) → record result + score
+                var r = StoryState.lastResult;
+                StoryState.lastResult = null;
+                if (r.win) {
+                    StoryState.markComplete(r.key);
+                    StoryState.addScore(r.key, r.score);   // only count cleared runs
+                    if (r.key === 'niupai') StoryState.dogJoined = true;  // dog now follows
+                    self._dm.play(r.key + '_post_win');
+                } else {
+                    // a full-minigame loss empties one heart; 0 hearts → game over
+                    if (StoryState.recordFail(r.key)) { EndingScreen.showGameOver(); return; }
+                    self._dm.play(r.key + '_post_lose');
+                }
+            } else if (StoryState.finalCleared && !StoryState.flags.endingShown) {
                 StoryState.flags.endingShown = true;
                 self._dm.play('mei_after');         // finale payoff after the boss returns
             } else if (!StoryState.seen['intro_girl']) {
@@ -80,14 +102,16 @@ cc.Class({
                     function (cb) { self._runOsu(cb); });
                 break;
             case 'professor':
-                // TEMP: dress-up minigame not ready — skip straight through via dialogue
-                // (like Niu Pai). To re-enable, restore the _runChallenge(... _runDressup) call below.
-                self._runChallengeSkip('professor', 'professor_pre', 'professor_post_win', 'professor_done');
-                // self._runChallenge('professor', 'professor_pre', 'professor_post_win', 'professor_post_lose', 'professor_done',
-                //     function (cb) { self._runDressup(cb); });
+                // Typing game (TYPE BLAST) — loads as its own scene
+                self._runSceneChallenge('professor', 'professor_pre', 'professor_done', 'Typing_game');
                 break;
             case 'niupai':
-                self._runNiupai();
+                // Real dog game once XiaoChiBu is wired; safe placeholder until then.
+                if (NIUPAI_SCENE_READY) {
+                    self._runSceneChallenge('niupai', 'niupai_pre', 'niupai_done', 'XiaoChiBu');
+                } else {
+                    self._runNiupai();
+                }
                 break;
             case 'mei':
                 self._runMei();
@@ -106,8 +130,11 @@ cc.Class({
                 launch(function (win, score) {
                     if (win) {
                         StoryState.markComplete(key);
+                        StoryState.addScore(key, score);   // only count cleared runs
                         self._say(winId);
                     } else {
+                        // losing a whole minigame empties one heart; 0 hearts → game over
+                        if (StoryState.recordFail(key)) { EndingScreen.showGameOver(); return; }
                         self._say(loseId);
                     }
                 });
@@ -122,6 +149,18 @@ cc.Class({
         self._say(preId, function () {
             StoryState.markComplete(key);
             self._say(winId);
+        });
+    },
+
+    // Scene-based challenge: pre-dialogue → ready prompt → load the game's own scene.
+    // The game reports back via StoryState.lastResult; onLoad (below) plays the post line.
+    _runSceneChallenge: function (key, preId, doneId, sceneName) {
+        var self = this;
+        if (StoryState.completed[key]) { self._say(doneId); return; }
+        self._say(preId, function () {
+            self._say('ready_to_play', function () {
+                cc.director.loadScene(sceneName);
+            });
         });
     },
 
@@ -166,12 +205,15 @@ cc.Class({
     _runNiupai: function () {
         var self = this;
         if (StoryState.completed.niupai) { self._say('niupai_done'); return; }
+        // Placeholder for the not-yet-wired XiaoChiBu game: greet, then a deliberate
+        // "ready?" confirm so it never auto-completes just by walking past the dog.
         self._say('niupai_pre', function () {
-            // Rescue succeeded — record it up front (robust to dialogue issues),
-            // then play the payoff. Niu Pai now follows the player.
-            StoryState.markComplete('niupai');
-            StoryState.dogJoined = true;
-            self._say('niupai_post_win');
+            self._say('ready_to_play', function () {
+                StoryState.markComplete('niupai');
+                StoryState.dogJoined = true;
+                StoryState.addScore('niupai', 0);
+                self._say('niupai_post_win');
+            });
         });
     },
 
