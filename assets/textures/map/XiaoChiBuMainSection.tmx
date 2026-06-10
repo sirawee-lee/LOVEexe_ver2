@@ -5,6 +5,8 @@
   <property name="mcOrderW" type="int" value="12"/>
   <property name="mcOrderX" type="float" value="21"/>
   <property name="mcOrderY" type="float" value="63"/>
+  <property name="niuPaiOrderWaitX" type="float" value="25"/>
+  <property name="niuPaiOrderWaitY" type="float" value="64"/>
   <property name="playerSpawnX" type="int" value="24"/>
   <property name="playerSpawnY" type="int" value="0"/>
   <property name="tunnelEntranceX" type="int" value="48"/>

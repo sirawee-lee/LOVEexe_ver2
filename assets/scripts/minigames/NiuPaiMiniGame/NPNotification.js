@@ -222,9 +222,16 @@ var NPNotification = cc.Class({
 
     _updateRootPosition: function () {
         if (!this._root || !this._root.isValid) return;
+        this._root.setPosition(this._getCameraPosition());
+    },
+
+    _getCameraPosition: function () {
+        if (this.game && this.game._getCameraPositionInGameNode) {
+            return this.game._getCameraPositionInGameNode();
+        }
         var camera = this.game && this.game._camera;
-        var cameraPos = camera && camera.node ? camera.node.getPosition() : cc.v2(0, 0);
-        this._root.setPosition(cameraPos);
+        if (!camera || !camera.node) return cc.v2(0, 0);
+        return camera.node.getPosition();
     },
 
     _getTopY: function () {

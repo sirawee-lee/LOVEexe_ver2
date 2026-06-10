@@ -26,10 +26,7 @@ cc.Class({
         sfxResume: { default: null, type: cc.AudioClip },
         sfxNotification: { default: null, type: cc.AudioClip },
         sfxDialogueConfirm: { default: null, type: cc.AudioClip },
-        sfxOrderStart: { default: null, type: cc.AudioClip },
-        sfxOrderSelect: { default: null, type: cc.AudioClip },
         sfxOrderConfirm: { default: null, type: cc.AudioClip },
-        sfxOrderBack: { default: null, type: cc.AudioClip },
         sfxOrderComplete: { default: null, type: cc.AudioClip },
         sfxItemPickup: { default: null, type: cc.AudioClip },
         sfxItemUse: { default: null, type: cc.AudioClip },
@@ -65,6 +62,7 @@ cc.Class({
         orderingStatusSprite: { default: null, type: cc.SpriteFrame },
         blackDogFollowingStatusSprite: { default: null, type: cc.SpriteFrame },
         normieSheet: { default: null, type: cc.Texture2D },
+        normieSheets: { default: [], type: [cc.Texture2D] },
         applePieSprite: { default: null, type: cc.SpriteFrame },
         bigMacSprite: { default: null, type: cc.SpriteFrame },
         mcFlurrySprite: { default: null, type: cc.SpriteFrame },
@@ -100,6 +98,7 @@ cc.Class({
         this._runtimeScore = 0;
         this._elapsedGameSeconds = 0;
         this._walletDropTimer = 0;
+        this._walletPlayerDropCooldownTimer = 0;
         this._wallets = [];
         this._walletNoticeCooldown = 0;
         this._shownWalletPickupNotification = false;
@@ -136,6 +135,7 @@ cc.Class({
         this._teleportCooldown = 0;
         this._teleportNeedsExit = false;
         this._teleportPromptNode = null;
+        this._orderAreaPromptNode = null;
         this._orderPromptNode = null;
         this._orderDialogNode = null;
         this._orderState = null;
@@ -145,6 +145,7 @@ cc.Class({
         this._pendingOrderMode = 'wait';
         this._playerInQueue = false;
         this._niuPaiInQueue = false;
+        this._orderBackHeld = false;
         this._heldItem = null;
         this._foodSpoilTime = 0;
         this._bigMacBaits = [];
@@ -221,6 +222,15 @@ cc.Class({
         this._stopBgm();
     },
 
+    start: function () {
+        if (this._active || this._onResult) return;
+        this.startGame(function (win, score) {
+            var StoryState = require('StoryState');
+            StoryState.lastResult = { key: 'niupai', win: !!win, score: score || 0 };
+            cc.director.loadScene('MainScene');
+        });
+    },
+
     startGame: function (onResult) {
         this._onResult = onResult || null;
         this._initGame();
@@ -233,6 +243,7 @@ cc.Class({
         this._runtimeScore = 0;
         this._elapsedGameSeconds = 0;
         this._walletDropTimer = Math.max(0.01, this.walletDropIntervalSeconds || 5);
+        this._walletPlayerDropCooldownTimer = 0;
         this._walletNoticeCooldown = 0;
         this._wallets = [];
         this._shownWalletPickupNotification = false;
@@ -241,6 +252,7 @@ cc.Class({
         this._teleportNeedsExit = false;
         this._canOrder = false;
         this._orderOpen = false;
+        this._orderBackHeld = false;
         this._introDialogOpen = false;
         this._playerNormieSlowTimer = 0;
         this._shownTunnelIntroDialogue = false;
@@ -310,6 +322,7 @@ cc.Class({
         this._mcDonaldControl.createQueue();
         this._normieControl.createNormies(this._getInitialRoamingNormieCount());
         this._drawTeleportPrompts();
+        this._drawOrderAreaPrompt();
     },
 
     _addTilemap: function (name, asset, offset) {
@@ -659,6 +672,33 @@ cc.Class({
         return this._getMapSpawnPosition(this._mainTiledMap, this.mainTilemapOffset, this.playerStartPosition);
     },
 
+    _getNiuPaiOrderWaitPosition: function () {
+        if (!this._mainTiledMap) return this._getNiuPaiOrderWaitFallbackPosition();
+
+        var props = this._mainTiledMap.getProperties() || {};
+        var tileX = this._readOptionalNumberProperty(props, 'niuPaiOrderWaitX');
+        var tileY = this._readOptionalNumberProperty(props, 'niuPaiOrderWaitY');
+        if (tileX === null || tileY === null) {
+            cc.warn('[NiuPai] Missing niuPaiOrderWaitX/niuPaiOrderWaitY; using fallback wait position.');
+            return this._getNiuPaiOrderWaitFallbackPosition();
+        }
+
+        return cc.v2(
+            this.mainTilemapOffset.x + (tileX + 0.5) * this.mapPropertyTileSize,
+            this.mainTilemapOffset.y + (tileY + 0.5) * this.mapPropertyTileSize
+        );
+    },
+
+    _getNiuPaiOrderWaitFallbackPosition: function () {
+        if (this._niuPaiNode && this._niuPaiNode.isValid) {
+            return this._niuPaiNode.getPosition();
+        }
+        if (this._niuPaiControl && this._niuPaiControl.getSpawnPosition) {
+            return this._niuPaiControl.getSpawnPosition();
+        }
+        return this._getPlayerSpawnPosition();
+    },
+
     _getMapSpawnPosition: function (tiledMap, offset, fallback) {
         if (!tiledMap) return fallback;
 
@@ -870,6 +910,7 @@ cc.Class({
 
     _onKeyUp: function (e) {
         this._keys[e.keyCode] = false;
+        if (e.keyCode === cc.macro.KEY.r) this._orderBackHeld = false;
     },
 
     _isPauseKey: function (keyCode) {
@@ -959,7 +1000,7 @@ cc.Class({
 
     _updatePauseOverlayPosition: function () {
         if (!this._pauseOverlayNode || !this._camera || !this._camera.node) return;
-        this._pauseOverlayNode.setPosition(this._camera.node.getPosition());
+        this._pauseOverlayNode.setPosition(this._getCameraPositionInGameNode());
     },
 
     _updatePlayerMovement: function (dt) {
@@ -1103,6 +1144,7 @@ cc.Class({
 
     _startOrderDialog: function () {
         this._orderOpen = true;
+        this._orderBackHeld = false;
         this._setOrderPromptVisible(false);
         this._stopPlayerBody();
         this._pendingOrderActor = 'player';
@@ -1111,12 +1153,12 @@ cc.Class({
         this._orderHistory = [];
         this._orderSelectedIndex = 0;
         this._renderOrderOverlay();
-        this._playSfx(this.sfxOrderStart);
         cc.log('[NiuPai] Order dialog started.');
     },
 
     _closeOrderDialog: function () {
         this._orderOpen = false;
+        this._orderBackHeld = false;
         this._stopPlayerBody();
 
         if (this._dialogueControl) this._dialogueControl.closeOrder();
@@ -1127,25 +1169,23 @@ cc.Class({
 
     _handleOrderKey: function (keyCode) {
         if (keyCode === cc.macro.KEY.r) {
-            this._playSfx(this.sfxOrderBack, 0.85);
+            if (this._orderBackHeld) return;
+            this._orderBackHeld = true;
             this._goBackOrderState();
             return;
         }
 
         if (keyCode === cc.macro.KEY.up || keyCode === cc.macro.KEY.w) {
-            this._playSfx(this.sfxOrderSelect, 0.75);
             this._moveOrderSelection(-1);
             return;
         }
 
         if (keyCode === cc.macro.KEY.down || keyCode === cc.macro.KEY.s) {
-            this._playSfx(this.sfxOrderSelect, 0.75);
             this._moveOrderSelection(1);
             return;
         }
 
         if (keyCode === cc.macro.KEY.e || keyCode === cc.macro.KEY.enter) {
-            this._playSfx(this.sfxOrderConfirm, 0.85);
             this._confirmOrderSelection();
         }
     },
@@ -1157,7 +1197,11 @@ cc.Class({
 
     _moveOrderSelection: function (delta) {
         var state = this._getOrderFlow()[this._orderState];
-        if (!state || !state.choices || state.choices.length === 0) return;
+        if (!state || !state.choices || state.choices.length === 0) {
+            cc.warn('[NiuPai] Invalid order selection state: ' + this._orderState + '; closing order dialogue.');
+            this._closeOrderDialog();
+            return;
+        }
 
         this._orderSelectedIndex =
             (this._orderSelectedIndex + delta + state.choices.length) % state.choices.length;
@@ -1167,10 +1211,18 @@ cc.Class({
     _confirmOrderSelection: function () {
         var flow = this._getOrderFlow();
         var state = flow[this._orderState];
-        if (!state) return;
+        if (!state) {
+            cc.warn('[NiuPai] Invalid order confirm state: ' + this._orderState + '; closing order dialogue.');
+            this._closeOrderDialog();
+            return;
+        }
 
         var choice = state.choices[this._orderSelectedIndex];
-        if (!choice) return;
+        if (!choice) {
+            cc.warn('[NiuPai] Invalid order choice index: ' + this._orderSelectedIndex + '; closing order dialogue.');
+            this._closeOrderDialog();
+            return;
+        }
 
         if (choice.actor) {
             this._pendingOrderActor = choice.actor;
@@ -1211,6 +1263,7 @@ cc.Class({
 
     _startQueuedOrder: function (item) {
         if (!this._mcDonaldControl) {
+            this._playSfx(this.sfxOrderConfirm, 0.85);
             this._setHeldItem(item);
             this._closeOrderDialog();
             return;
@@ -1226,7 +1279,7 @@ cc.Class({
             return;
         }
 
-        this._playSfx(this.sfxOrderStart);
+        this._playSfx(this.sfxOrderConfirm, 0.85);
         this._closeOrderDialog();
     },
 
@@ -1235,10 +1288,16 @@ cc.Class({
         this._playSfx(this.sfxOrderComplete);
         if (actorType === 'player') this._playerInQueue = false;
         if (actorType === 'niupai') this._niuPaiInQueue = false;
-        if (actorType === 'niupai' && this._blackDogControl) {
-            if (this._niuPaiControl) this._niuPaiControl.waitForPlayerPickup();
-            this._blackDogControl.startRobbingNiuPai();
-            this._niuPaiControl.setHeldItem(item);
+        if (actorType === 'niupai') {
+            this._moveNiuPaiToOrderWaitPosition();
+            if (this._niuPaiControl) {
+                this._niuPaiControl.path = [];
+                this._niuPaiControl.pathTimer = 0;
+                this._niuPaiControl.following = false;
+                this._niuPaiControl.waitForPlayerPickup();
+                this._niuPaiControl.setHeldItem(item);
+            }
+            if (this._blackDogControl) this._blackDogControl.startRobbingNiuPai();
             this._showPersistentNotification(NPNotification.Type.NiuPaiOrderDone);
         }
         else if(actorType === 'player') {
@@ -1248,8 +1307,24 @@ cc.Class({
             ' item=' + this._formatItemName(item));
     },
 
+    _moveNiuPaiToOrderWaitPosition: function () {
+        if (!this._niuPaiNode || !this._niuPaiNode.isValid) return;
+
+        var pos = this._getNiuPaiOrderWaitPosition();
+        this._niuPaiNode.setPosition(pos);
+        if (this._niuPaiBody) {
+            this._niuPaiBody.linearVelocity = cc.v2(0, 0);
+            this._niuPaiBody.syncPosition(true);
+        }
+        if (this._niuPaiAnimator) this._niuPaiAnimator.setMoving(false);
+        if (this._setRunParticleActive) this._setRunParticleActive('niupai', this._niuPaiNode, false);
+    },
+
     niuPaiHandItemToPlayer: function (item) {
         if (!item) return;
+        if (this._blackDogControl) {
+            this._blackDogControl.stopRobbingNiuPai('[NiuPai] Black dog ambush cancelled; NiuPai resumed movement.');
+        }
         this._dismissNotification(NPNotification.Type.NiuPaiOrderDone);
         this._setHeldItem(item);
     },
@@ -1265,11 +1340,35 @@ cc.Class({
         return Math.max(0, this.normieTotalCount - queueCount);
     },
 
+    _getRandomNormieSheet: function () {
+        var sheets = this.normieSheets || [];
+        var validSheets = [];
+        for (var i = 0; i < sheets.length; i++) {
+            if (sheets[i]) validSheets.push(sheets[i]);
+        }
+
+        if (validSheets.length > 0) {
+            return validSheets[Math.floor(Math.random() * validSheets.length)];
+        }
+
+        return this.normieSheet || null;
+    },
+
     _renderOrderOverlay: function () {
         this._ensureDialogueControl();
-        if (this._dialogueControl) {
-            this._dialogueControl.showOrder(this._orderState, this._orderSelectedIndex, this._heldItem);
+        if (!this._dialogueControl) {
+            cc.warn('[NiuPai] Cannot render order dialogue; closing order state.');
+            this._closeOrderDialog();
+            return false;
         }
+
+        if (!this._dialogueControl.showOrder(this._orderState, this._orderSelectedIndex, this._heldItem)) {
+            cc.warn('[NiuPai] Invalid order state: ' + this._orderState + '; closing order dialogue.');
+            this._closeOrderDialog();
+            return false;
+        }
+
+        return true;
     },
 
     _updateOrderOverlayPosition: function () {
@@ -1406,17 +1505,27 @@ cc.Class({
         this._dialogueControl.init(this);
     },
 
+    _resumeAfterDialogue: function () {
+        this._keys = {};
+        this._introDialogOpen = false;
+        this._stopPlayerBody();
+        this._updateOrderTrigger();
+        this._updateHud(0);
+    },
+
     _showIntroDialogue: function () {
         var self = this;
         this._ensureDialogueControl();
         this._introDialogOpen = true;
         this._stopAllActorMovement();
         if (this._dialogueControl) {
-            this._dialogueControl.show(NPDialogue.Type.IntroControls, function () {
-                self._introDialogOpen = false;
-            });
+            if (!this._dialogueControl.show(NPDialogue.Type.IntroControls, function () {
+                self._resumeAfterDialogue();
+            })) {
+                self._resumeAfterDialogue();
+            }
         } else {
-            this._introDialogOpen = false;
+            this._resumeAfterDialogue();
         }
     },
 
@@ -1429,9 +1538,13 @@ cc.Class({
         this._keys = {};
         this._stopAllActorMovement();
         if (this._dialogueControl) {
-            this._dialogueControl.show(NPDialogue.Type.TunnelIntro, function () {
-                self._keys = {};
-            });
+            if (!this._dialogueControl.show(NPDialogue.Type.TunnelIntro, function () {
+                self._resumeAfterDialogue();
+            })) {
+                self._resumeAfterDialogue();
+            }
+        } else {
+            this._resumeAfterDialogue();
         }
     },
 
@@ -1521,12 +1634,20 @@ cc.Class({
         this._refreshHudContent();
     },
 
+    _getCameraPositionInGameNode: function () {
+        if (!this._camera || !this._camera.node || !this.node) return cc.v2(0, 0);
+        var cameraNode = this._camera.node;
+        var parent = cameraNode.parent;
+        var worldPos = parent
+            ? parent.convertToWorldSpaceAR(cameraNode.getPosition())
+            : cameraNode.getPosition();
+        return this.node.convertToNodeSpaceAR(worldPos);
+    },
+
     _updateHudPosition: function () {
         if (!this._hudRoot) return;
 
-        var cameraPos = this._camera && this._camera.node
-            ? this._camera.node.getPosition()
-            : cc.v2(0, 0);
+        var cameraPos = this._getCameraPositionInGameNode();
         this._hudRoot.setPosition(cameraPos);
 
         var zoom = this._camera ? (this._camera.zoomRatio || 1) : 1;
@@ -1677,9 +1798,7 @@ cc.Class({
         node.active = visible;
         if (!visible) return;
 
-        var cameraPos = this._camera && this._camera.node
-            ? this._camera.node.getPosition()
-            : cc.v2(0, 0);
+        var cameraPos = this._getCameraPositionInGameNode();
         node.setPosition(cameraPos);
 
         var zoom = this._camera ? (this._camera.zoomRatio || 1) : 1;
@@ -1762,9 +1881,7 @@ cc.Class({
         node.active = visible;
         if (!visible) return;
 
-        var cameraPos = this._camera && this._camera.node
-            ? this._camera.node.getPosition()
-            : cc.v2(0, 0);
+        var cameraPos = this._getCameraPositionInGameNode();
         node.setPosition(cameraPos);
 
         var zoom = this._camera ? (this._camera.zoomRatio || 1) : 1;
@@ -2987,6 +3104,7 @@ cc.Class({
         if (!this._active || !this._world || !this._playerNode) return;
 
         this._walletNoticeCooldown = Math.max(0, (this._walletNoticeCooldown || 0) - dt);
+        this._walletPlayerDropCooldownTimer = Math.max(0, (this._walletPlayerDropCooldownTimer || 0) - dt);
         if (this._currentSection !== 'main') return;
 
         this._walletDropTimer = Math.max(0, (this._walletDropTimer || 0) - dt);
@@ -3012,9 +3130,12 @@ cc.Class({
     _tryDropWalletFromPlayerBump: function (node) {
         if (!node || !node.isValid) return false;
         if (node._npWalletDroppedFromBump) return false;
+        if (this._walletPlayerDropCooldownTimer > 0) return false;
         node._npWalletDroppedFromBump = true;
         if (Math.random() >= Math.max(0, Math.min(1, this.walletPlayerDropChance || 0))) return false;
-        return this._spawnWallet(node.getPosition());
+        if (!this._spawnWallet(node.getPosition())) return false;
+        this._walletPlayerDropCooldownTimer = Math.max(0, this.walletPlayerDropCooldownSeconds || 3);
+        return true;
     },
 
     _getWalletDropNpcNodes: function () {
@@ -3309,6 +3430,31 @@ cc.Class({
         }
     },
 
+    _drawOrderAreaPrompt: function () {
+        if (!this._world) return;
+
+        if (this._orderAreaPromptNode && this._orderAreaPromptNode.isValid) {
+            this._orderAreaPromptNode.destroy();
+        }
+
+        var rect = this._getMcOrderTriggerRect();
+        if (!rect) return;
+
+        var root = new cc.Node('OrderAreaVisuals');
+        this._world.addChild(root, 998);
+        root.zIndex = 998;
+        this._orderAreaPromptNode = root;
+
+        var width = Math.max(36, rect.maxX - rect.minX + 10);
+        var height = Math.max(28, rect.maxY - rect.minY + 10);
+        var center = cc.v2((rect.minX + rect.maxX) / 2, (rect.minY + rect.maxY) / 2);
+        var node = new cc.Node('OrderAreaPrompt');
+        node.setPosition(center);
+        root.addChild(node, 1);
+
+        this._addOrderAreaPulseFrames(node, width, height);
+    },
+
     _addTunnelEntrancePromptVisual: function (parent, options) {
         if (!parent || !parent.isValid) return;
         options = options || {};
@@ -3357,6 +3503,43 @@ cc.Class({
         gfx.lineWidth = 2;
         gfx.rect(-width / 2 + 8, -height / 2 + 8, width - 16, height - 16);
         gfx.stroke();
+    },
+
+    _addOrderAreaPulseFrames: function (parent, width, height) {
+        var count = 2;
+        for (var i = 0; i < count; i++) {
+            var pulse = new cc.Node('OrderAreaPulseFrame_' + i);
+            pulse.setContentSize(width, height);
+            parent.addChild(pulse, 3);
+            this._drawOrderAreaPromptFrame(pulse, width, height);
+            this._runOrderAreaPulse(pulse, i * 0.48);
+        }
+    },
+
+    _drawOrderAreaPromptFrame: function (node, width, height) {
+        var gfx = node.addComponent(cc.Graphics);
+        gfx.clear();
+        gfx.strokeColor = cc.color(90, 215, 255, 135);
+        gfx.lineWidth = 1.25;
+        gfx.rect(-width / 2 + 6, -height / 2 + 6, width - 12, height - 12);
+        gfx.stroke();
+    },
+
+    _runOrderAreaPulse: function (node, delay) {
+        var reset = cc.callFunc(function () {
+            if (!node || !node.isValid) return;
+            node.opacity = 95;
+            node.setScale(0.86);
+        });
+        node.runAction(cc.repeatForever(cc.sequence(
+            cc.delayTime(delay),
+            reset,
+            cc.spawn(
+                cc.scaleTo(1.18, 1.16),
+                cc.fadeTo(1.18, 0)
+            ),
+            cc.delayTime(0.22)
+        )));
     },
 
     _addExitPromptPulseFrames: function (parent, width, height) {
@@ -3514,9 +3697,13 @@ cc.Class({
         this._stopAllActorMovement();
         if (this._dialogueControl) {
             var self = this;
-            this._dialogueControl.show(NPDialogue.Type.TunnelExitNoFood, function () {
-                self._keys = {};
-            });
+            if (!this._dialogueControl.show(NPDialogue.Type.TunnelExitNoFood, function () {
+                self._resumeAfterDialogue();
+            })) {
+                self._resumeAfterDialogue();
+            }
+        } else {
+            this._resumeAfterDialogue();
         }
     },
 
@@ -4089,7 +4276,11 @@ cc.Class({
             return;
         }
 
-        if (this._introDialogOpen || (this._dialogueControl && this._dialogueControl.isOpen())) {
+        if (!this._orderOpen && this._dialogueControl && this._dialogueControl.isOrderOpen()) {
+            this._dialogueControl.closeOrder();
+        }
+
+        if (this._introDialogOpen || (this._dialogueControl && this._dialogueControl.isSimpleOpen())) {
             this._stopAllActorMovement();
             this._updateCameraFollow();
             this._updateHud(0);

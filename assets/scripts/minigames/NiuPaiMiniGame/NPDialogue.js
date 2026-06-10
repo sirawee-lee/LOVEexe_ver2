@@ -134,6 +134,10 @@ var NPDialogue = cc.Class({
         return !!this.activeType && this.activeType !== 'order';
     },
 
+    isOrderOpen: function () {
+        return this.activeType === 'order';
+    },
+
     getOrderFlow: function () {
         return DialogueContent.OrderFlow;
     },
@@ -244,7 +248,7 @@ var NPDialogue = cc.Class({
         if (!this._root.active) return;
 
         var camera = this.game && this.game._camera;
-        var cameraPos = camera && camera.node ? camera.node.getPosition() : cc.v2(0, 0);
+        var cameraPos = this._getCameraPosition();
         this._root.setPosition(cameraPos);
 
         var zoom = camera ? (camera.zoomRatio || 1) : 1;
@@ -306,7 +310,7 @@ var NPDialogue = cc.Class({
         if (!this._orderRoot || !this._orderRoot.isValid || !this._orderRoot.active) return;
 
         var camera = this.game && this.game._camera;
-        var cameraPos = camera && camera.node ? camera.node.getPosition() : cc.v2(0, 0);
+        var cameraPos = this._getCameraPosition();
         this._orderRoot.setPosition(cameraPos);
 
         var zoom = camera ? (camera.zoomRatio || 1) : 1;
@@ -331,6 +335,15 @@ var NPDialogue = cc.Class({
         for (var i = 0; i < this._orderChoiceLabels.length; i++) {
             this._orderChoiceLabels[i].setPosition(0, startY - (i + 1) * lineH);
         }
+    },
+
+    _getCameraPosition: function () {
+        if (this.game && this.game._getCameraPositionInGameNode) {
+            return this.game._getCameraPositionInGameNode();
+        }
+        var camera = this.game && this.game._camera;
+        if (!camera || !camera.node) return cc.v2(0, 0);
+        return camera.node.getPosition();
     },
 
     _drawPanel: function (node, width, height, fillColor, strokeColor) {

@@ -260,8 +260,8 @@
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
+      "x": 0,
+      "y": 0
     },
     "_trs": {
       "__type__": "TypedArray",
@@ -300,41 +300,70 @@
       "__id__": 5
     },
     "_enabled": true,
-    "bgm": null,
+    "bgm": {
+      "__uuid__": "10472abf-8b40-453b-bf94-820c890c0a2c"
+    },
     "sfxCorrect": null,
     "sfxWrong": null,
     "sfxPause": null,
     "sfxResume": null,
-    "sfxNotification": null,
+    "sfxNotification": {
+      "__uuid__": "33ba781d-0dde-4a85-8f6c-978ae82f9c54"
+    },
     "sfxDialogueConfirm": null,
-    "sfxOrderStart": null,
-    "sfxOrderSelect": null,
-    "sfxOrderConfirm": null,
-    "sfxOrderBack": null,
-    "sfxOrderComplete": null,
+    "sfxOrderConfirm": {
+      "__uuid__": "fb67a8bf-73ed-482f-848a-87f1ee66e195"
+    },
+    "sfxOrderComplete": {
+      "__uuid__": "7f7b813e-a077-4061-8714-882edf704063"
+    },
     "sfxItemPickup": null,
-    "sfxItemUse": null,
+    "sfxItemUse": {
+      "__uuid__": "a86cdbcb-34a1-4cc7-a4dc-572d66bab2da"
+    },
     "sfxFoodSpoil": null,
-    "sfxHeal": null,
+    "sfxHeal": {
+      "__uuid__": "6f355db2-f24a-408b-a93a-99d421e48381"
+    },
     "sfxBigMacBait": null,
-    "sfxMcFlurryArm": null,
-    "sfxMcFlurryExplosion": null,
-    "sfxObstacleBreak": null,
-    "sfxObstacleBump": null,
-    "sfxNormieBump": null,
+    "sfxMcFlurryArm": {
+      "__uuid__": "40ce9980-ad82-4982-bfd4-bc264be3ce6f"
+    },
+    "sfxMcFlurryExplosion": {
+      "__uuid__": "f6ae3a8c-8baa-4b34-b340-01cd09d84ddf"
+    },
+    "sfxObstacleBreak": {
+      "__uuid__": "38cffaf0-9e57-4ab9-90db-7baabefae1af"
+    },
+    "sfxObstacleBump": {
+      "__uuid__": "3948e3d5-cf97-40d5-8400-25cfcbe170e9"
+    },
+    "sfxNormieBump": {
+      "__uuid__": "54def91b-88c2-408a-bc07-b6e3674f0188"
+    },
     "sfxNormieSlow": null,
     "sfxWalletDrop": null,
-    "sfxWalletPickup": null,
+    "sfxWalletPickup": {
+      "__uuid__": "f5afbab6-1b63-457c-8c86-da88230b2552"
+    },
     "sfxWalletNotice": null,
-    "sfxTeleport": null,
+    "sfxTeleport": {
+      "__uuid__": "5774a783-c836-48a8-b2a9-6505f3f095aa"
+    },
     "sfxTunnelExitBlocked": null,
-    "sfxPlayerDamage": null,
-    "sfxNiuPaiDamage": null,
+    "sfxPlayerDamage": {
+      "__uuid__": "2b7f2ae4-e2c0-4522-b02d-bd562f23bb91"
+    },
+    "sfxNiuPaiDamage": {
+      "__uuid__": "f79e9ef9-3ce9-40fd-9ea3-f6609fd2255e"
+    },
     "sfxBlackDogSpawn": null,
     "sfxBlackDogAttack": null,
     "sfxBlackDogStun": null,
     "sfxBlackDogBaitAlert": null,
-    "walletSprite": null,
+    "walletSprite": {
+      "__uuid__": "df1185a1-5122-4eb2-8baf-3ee4c589bad4"
+    },
     "playerSheet": {
       "__uuid__": "eed3281a-fffa-4b9d-8f66-59f9594c8d10"
     },
@@ -342,7 +371,7 @@
       "__uuid__": "a3cd3f2e-e25f-4d24-9609-f1e80fb0810e"
     },
     "blackDogSheet": {
-      "__uuid__": "a3cd3f2e-e25f-4d24-9609-f1e80fb0810e"
+      "__uuid__": "1f00f818-6dce-4a69-9450-5db33c83856e"
     },
     "mainTilemap": {
       "__uuid__": "99dc7c35-14fc-4af6-b211-16a85ccbf978"
@@ -350,7 +379,9 @@
     "tunnelTilemap": {
       "__uuid__": "cabc6593-6474-4007-abaf-6af08eae00d0"
     },
-    "initialObstacleSprite": null,
+    "initialObstacleSprite": {
+      "__uuid__": "c7543d18-91d5-400d-ade6-7b1c4fa02258"
+    },
     "gameCamera": null,
     "mcDonaldRegionSprite": {
       "__uuid__": "a8ba4ddd-82e2-4f00-94b5-2b84dcb2e287"
@@ -360,6 +391,7 @@
     "normieSheet": {
       "__uuid__": "7d0791c2-8c23-4725-b9b2-002a22d19f89"
     },
+    "normieSheets": [],
     "applePieSprite": {
       "__uuid__": "3fd93a05-617e-4214-82db-7a8493df58a7"
     },
@@ -369,27 +401,47 @@
     "mcFlurrySprite": {
       "__uuid__": "d2ce7e35-f45e-4b21-8403-0cddb21c9e4c"
     },
-    "bigMacSmellParticleSprite": null,
+    "bigMacSmellParticleSprite": {
+      "__uuid__": "ee2bb4fb-326e-4a3f-b7da-9cb718922dcc"
+    },
     "blackDogBaitAlertSprite": null,
     "mcFlurryExplosionFrames": [],
-    "mcFlurryExplosionSheet": null,
+    "mcFlurryExplosionSheet": {
+      "__uuid__": "54ffbc63-4631-4a2e-b68d-cb02873ed025"
+    },
     "obstacleDestroyFrames": [],
-    "obstacleDestroySheet": null,
+    "obstacleDestroySheet": {
+      "__uuid__": "a931bb8a-0642-43f5-b0fa-89ed89179cb6"
+    },
     "healEffectFrames": [],
-    "healEffectSheet": null,
+    "healEffectSheet": {
+      "__uuid__": "27ae2439-122b-4938-99b7-be9a374514f0"
+    },
     "playerMoveEffectFrames": [],
     "playerMoveEffectSheet": null,
     "blackDogMoveEffectFrames": [],
     "blackDogMoveEffectSheet": null,
-    "playerRunParticleSprite": null,
-    "blackDogRunParticleSprite": null,
+    "playerRunParticleSprite": {
+      "__uuid__": "382d728d-96d9-4af7-837d-7e77eb204001"
+    },
+    "blackDogRunParticleSprite": {
+      "__uuid__": "ee2bb4fb-326e-4a3f-b7da-9cb718922dcc"
+    },
     "normieCollisionEffectFrames": [],
     "normieCollisionEffectSheet": null,
     "normieScaredEffectFrames": [],
-    "normieScaredEffectSheet": null,
-    "blackDogMcFlurryStunSprite": null,
-    "labelFont": null,
-    "damageEffectShader": null,
+    "normieScaredEffectSheet": {
+      "__uuid__": "935cc03a-8f42-40c1-b5e2-91f899f31bea"
+    },
+    "blackDogMcFlurryStunSprite": {
+      "__uuid__": "1eaa7b9f-ffe8-4eab-bcb0-9cd59e29a1be"
+    },
+    "labelFont": {
+      "__uuid__": "aaa57f1b-007d-4dd0-96de-cfb44abdb8b2"
+    },
+    "damageEffectShader": {
+      "__uuid__": "b78a656c-1ccc-4dc8-93cc-a0b073f500b8"
+    },
     "_id": "328Urpp5pFnIZ2JMn33V5d"
   },
   {

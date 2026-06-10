@@ -685,9 +685,10 @@ var NPNormieControl = cc.Class({
 
     _applyAppearance: function (node) {
         var game = this.game;
-        if (game.normieSheet) {
+        var sheet = game._getRandomNormieSheet ? game._getRandomNormieSheet() : game.normieSheet;
+        if (sheet) {
             var anim = node.getComponent('PlayerAnimator') || node.addComponent('PlayerAnimator');
-            anim.spritesheet = game.normieSheet;
+            anim.spritesheet = sheet;
             anim.frameWidth = game.normieFrameW;
             anim.frameHeight = game.normieFrameH;
             anim._buildFrames();

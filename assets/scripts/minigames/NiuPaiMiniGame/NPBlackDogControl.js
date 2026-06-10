@@ -59,6 +59,11 @@ var NPBlackDogControl = cc.Class({
         cc.log('[NiuPai] Black dogs robbing NiuPai.');
     },
 
+    stopRobbingNiuPai: function (message) {
+        if (!this.robbingNiuPai) return;
+        this._cancelRobbing(message);
+    },
+
     _updateRobbing: function (dt) {
         if (this.robbingNiuPai && this._shouldCancelRobbing()) {
             this._cancelRobbing('[NiuPai] Black dog ambush cancelled.');
@@ -66,7 +71,7 @@ var NPBlackDogControl = cc.Class({
     },
 
     _shouldCancelRobbing: function () {
-        return this._hasActiveBigMacBait();
+        return this._hasActiveBigMacBait() || this._niuPaiMovedAfterOrder();
     },
 
     _cancelRobbing: function (message) {
@@ -262,9 +267,6 @@ var NPBlackDogControl = cc.Class({
         if (hitNiuPai) {
             game._damageNiuPai(game.blackDogDamageHp);
             this._stunDogFromNiuPaiCounter(dog);
-            if (this.robbingNiuPai) {
-                this._cancelRobbing('[NiuPai] Black dog ambush reached NiuPai.');
-            }
         }
     },
 

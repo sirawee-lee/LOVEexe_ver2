@@ -119,9 +119,10 @@ var NPMcDonaldControl = cc.Class({
         this.root.addChild(node, 0);
 
         node.addComponent(cc.Sprite);
-        if (this.game.normieSheet) {
+        var sheet = this.game._getRandomNormieSheet ? this.game._getRandomNormieSheet() : this.game.normieSheet;
+        if (sheet) {
             var anim = node.addComponent('PlayerAnimator');
-            anim.spritesheet = this.game.normieSheet;
+            anim.spritesheet = sheet;
             anim.frameWidth = this.game.normieFrameW;
             anim.frameHeight = this.game.normieFrameH;
             anim._buildFrames();
