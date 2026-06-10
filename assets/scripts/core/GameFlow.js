@@ -28,6 +28,8 @@
 // shown top-right next to the hearts. Per-game point values live in each game file.
 
 const PixelFont = require('PixelFont');
+const Juice = require('Juice');
+const Gamepad = require('Gamepad');
 
 const SEQUENCE = ['needle', 'counterGame', 'dontPress', 'flappy1', 'runner'];
 const MAX_LOVE = 3;            // 3 hearts = 100% (each heart = 1/3)
@@ -84,9 +86,12 @@ const GameFlow = {
             this.score = 0;
             this.scores = {};
         }
+        this._gameNode = gameNode || null;   // used for screen-shake target
         this.pending = 0;        // fresh attempt -> no live points yet
         this._busy = false;
+        Gamepad.ensureStarted();             // controller support (idempotent)
         this._buildHud();
+        this._fadeIn();                      // smooth entry from the previous scene
     },
 
     // -----------------------------------------------------------------
@@ -98,6 +103,17 @@ const GameFlow = {
     addScore(delta) {
         this.pending = Math.max(0, this.pending + delta);
         this._refreshScore();
+        if (delta) this._popScore(delta);   // floating +N / -N near the HUD
+    },
+
+    // Floating "+100" (gold) / "-150" (red) just under the score label.
+    _popScore(delta) {
+        const canvas = this._getCanvas();
+        if (!canvas || !this._scoreLabel || !cc.isValid(this._scoreLabel.node)) return;
+        const wp = this._scoreLabel.node.parent.convertToWorldSpaceAR(this._scoreLabel.node.position);
+        const lp = canvas.convertToNodeSpaceAR(wp);
+        const txt = (delta > 0 ? '+' : '') + delta;
+        Juice.floatText(canvas, txt, delta > 0 ? COL_GOLD : COL_LOSE, lp.x - 24, lp.y - 36, 28);
     },
 
     win() {
@@ -166,6 +182,7 @@ const GameFlow = {
         this.love = Math.max(0, this.love - 1);   // lose 1/3
         this._refreshHearts();
         this._refreshScore();
+        this._juiceHeartLoss();      // screen shake + a burst where the heart was
 
         if (this.love <= 0) {
             this._showOverlay({
@@ -202,7 +219,51 @@ const GameFlow = {
     },
 
     _loadScene(name) {
-        cc.director.loadScene(name);
+        this._fadeOut(() => cc.director.loadScene(name));
+    },
+
+    // ---- Scene-transition fade + heart-loss juice ----------------------------
+    _fadeCover(opacityFrom) {
+        const canvas = this._getCanvas();
+        if (!canvas) return null;
+        const node = new cc.Node('__FlowFade');
+        node.parent = canvas;
+        node.zIndex = 99999;                 // above everything, including overlays
+        node.setContentSize(canvas.width, canvas.height);
+        const g = node.addComponent(cc.Graphics);
+        g.fillColor = cc.color(0, 0, 0);
+        g.rect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+        g.fill();
+        node.opacity = opacityFrom;
+        return node;
+    },
+
+    _fadeOut(cb) {
+        const node = this._fadeCover(0);
+        if (!node) { if (cb) cb(); return; }
+        cc.tween(node).to(0.22, { opacity: 255 }).call(() => { if (cb) cb(); }).start();
+    },
+
+    _fadeIn() {
+        const node = this._fadeCover(255);
+        if (!node) return;
+        cc.tween(node).to(0.22, { opacity: 0 })
+            .call(() => { if (cc.isValid(node)) node.destroy(); })
+            .start();
+    },
+
+    _juiceHeartLoss() {
+        const canvas = this._getCanvas();
+        if (!canvas) return;
+        // shake the game content (HUD + overlay stay put); fall back to the canvas
+        Juice.shake((this._gameNode && cc.isValid(this._gameNode)) ? this._gameNode : canvas, 16, 0.35);
+        // pop a burst of red right where the heart that just emptied sits
+        const lost = this._hearts && this._hearts[this.love];
+        if (lost && cc.isValid(lost.node)) {
+            const wp = lost.node.parent.convertToWorldSpaceAR(lost.node.position);
+            const lp = canvas.convertToNodeSpaceAR(wp);
+            Juice.burst(canvas, lp.x, lp.y, COL_HEART, 14);
+        }
     },
 
     _getCanvas() {
@@ -244,7 +305,7 @@ const GameFlow = {
 
         // running score, top-right (same group, so it's torn down with the HUD)
         const sx = canvas.width - 2 * margin;   // hud origin is the top-left+margin corner
-        const sLbl = this._makeLabel(hud, '', 30, COL_GOLD, sx, -24);
+        const sLbl = this._makeLabel(hud, '', 36, COL_GOLD, sx, -24);
         sLbl.horizontalAlign = cc.Label.HorizontalAlign.RIGHT;
         sLbl.node.anchorX = 1;
         this._scoreLabel = sLbl;

@@ -81,6 +81,12 @@ cc.Class({
         this.correctCount = 0;             // how many levels answered correctly
         this.results = [];                 // true/false per level (for icon row)
         this.movers = [];
+        // reuse character nodes instead of instantiate/destroy every level
+        this._pools = {
+            mario:  new cc.NodePool(),
+            goomba: new cc.NodePool(),
+            winged: new cc.NodePool(),
+        };
         this.phase = 'idle';
         this.counterBaseY = this.counterLabel ? this.counterLabel.node.y : 0;
 
@@ -114,6 +120,11 @@ cc.Class({
         if (this.handButton)   this.handButton.off(cc.Node.EventType.TOUCH_START, this.onTapHand, this);
         if (this.submitButton) this.submitButton.off(cc.Node.EventType.TOUCH_START, this.onSubmit, this);
         cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
+        if (this._pools) {
+            this._pools.mario.clear();
+            this._pools.goomba.clear();
+            this._pools.winged.clear();
+        }
     },
 
     // ----- RUN phase -----
@@ -131,7 +142,7 @@ cc.Class({
         if (this.counterBadge) this.counterBadge.active = false;
         if (this.hintLabel)    this.hintLabel.node.active = false;
 
-        this.movers.forEach(m => m.node.destroy());
+        this.movers.forEach(m => this._recycle(m.node, m.type));
         this.movers = [];
 
         const targetType = this.cfg.target;
@@ -152,13 +163,12 @@ cc.Class({
     },
 
     spawnCharacter(type, idx) {
-        let prefab = this.marioPrefab;
-        if (type === 'goomba') prefab = this.goombaPrefab;
-        else if (type === 'winged') prefab = this.wingedGoombaPrefab;
-        if (!prefab || !this.characterLayer) return;
+        if (!this.characterLayer) return;
+        const node = this._getChar(type);
+        if (!node) return;
 
-        const node = cc.instantiate(prefab);
-        this.characterLayer.addChild(node);
+        node.active = true;
+        if (!node.parent) this.characterLayer.addChild(node);
         node.scale = this.characterScale;
 
         node.x = this.spawnX - idx * (70 + Math.random() * 120);
@@ -166,7 +176,29 @@ cc.Class({
 
         const runTime = this.minRunTime + Math.random() * (this.maxRunTime - this.minRunTime);
         const speed = (this.exitX - node.x) / runTime;
-        this.movers.push({ node: node, speed: speed });
+        this.movers.push({ node: node, speed: speed, type: type });
+    },
+
+    // Pull a character from its pool, or instantiate one if the pool is empty.
+    _getChar(type) {
+        const pool = this._pools[type];
+        let node = (pool && pool.size() > 0) ? pool.get() : null;
+        if (!node) {
+            let prefab = this.marioPrefab;
+            if (type === 'goomba') prefab = this.goombaPrefab;
+            else if (type === 'winged') prefab = this.wingedGoombaPrefab;
+            if (!prefab) return null;
+            node = cc.instantiate(prefab);
+        }
+        return node;
+    },
+
+    // Return a character to its pool (detaches + deactivates it for reuse).
+    _recycle(node, type) {
+        if (!node || !cc.isValid(node)) return;
+        const pool = this._pools[type];
+        if (pool) pool.put(node);
+        else node.destroy();
     },
 
     update(dt) {
@@ -175,7 +207,7 @@ cc.Class({
             const m = this.movers[i];
             m.node.x += m.speed * dt;
             if (m.node.x > this.exitX) {
-                m.node.destroy();
+                this._recycle(m.node, m.type);
                 this.movers.splice(i, 1);
             }
         }
@@ -284,7 +316,7 @@ cc.Class({
     // ----- End screen -----
     showEnd(text, color) {
         this.phase = 'idle';
-        this.movers.forEach(m => m.node.destroy());
+        this.movers.forEach(m => this._recycle(m.node, m.type));
         this.movers = [];
         if (this.characterLayer) this.characterLayer.active = false;
         if (this.handButton)     this.handButton.active = false;

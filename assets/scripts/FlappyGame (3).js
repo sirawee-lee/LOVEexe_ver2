@@ -90,6 +90,7 @@ cc.Class({
 
   onLoad() {
     this.birdX = this.bird ? this.bird.x : -160;
+    this._pipePool = new cc.NodePool();   // reuse pipe nodes instead of create/destroy
 
     if (this.inputArea)
       this.inputArea.on(cc.Node.EventType.TOUCH_START, this.onFlap, this);
@@ -119,6 +120,7 @@ cc.Class({
     if (this.inputArea)
       this.inputArea.off(cc.Node.EventType.TOUCH_START, this.onFlap, this);
     cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
+    if (this._pipePool) this._pipePool.clear();
   },
 
   resetGame() {
@@ -130,7 +132,7 @@ cc.Class({
     this.readyT = 0;
     this.prevGapY = 0;
     this.pipes = this.pipes || [];
-    this.pipes.forEach((p) => p.node.destroy());
+    this.pipes.forEach((p) => this._recyclePipe(p.node));
     this.pipes = [];
 
     if (this.bird) {
@@ -226,7 +228,7 @@ cc.Class({
       }
 
       if (p.node.x < this.despawnX) {
-        p.node.destroy();
+        this._recyclePipe(p.node);
         this.pipes.splice(i, 1);
       }
     }
@@ -261,31 +263,24 @@ cc.Class({
     const gapTop = gapY + gap / 2;
     const gapBottom = gapY - gap / 2;
     const over = this.pipeOverfill;
-    const capW = this.pipeWidth + this.capWidthExtra;
 
-    const pair = new cc.Node("pipe");
+    const pair = this._acquirePipe();   // pooled: reused if available, else built once
     pair.setPosition(this.spawnX, 0);
-    this.pipeContainer.addChild(pair);
+    const P = pair._parts;
 
     // bottom pipe (extends below the ground so no gap)
     const bBottom = this.groundY - over;
     const bH = gapBottom - bBottom;
-    const bBody = this.makeSprite(this.pipeBody, this.pipeWidth, bH);
-    bBody.y = bBottom + bH / 2;
-    pair.addChild(bBody);
-    const bCap = this.makeSprite(this.pipeCap, capW, this.capHeight);
-    bCap.y = gapBottom - this.capHeight / 2;
-    pair.addChild(bCap);
+    P.bBody.height = Math.max(2, bH);
+    P.bBody.y = bBottom + bH / 2;
+    P.bCap.y = gapBottom - this.capHeight / 2;
 
     // top pipe (extends above the ceiling so it fills to the top)
     const tTop = this.ceilingY + over;
     const tH = tTop - gapTop;
-    const tBody = this.makeSprite(this.pipeBody, this.pipeWidth, tH);
-    tBody.y = gapTop + tH / 2;
-    pair.addChild(tBody);
-    const tCap = this.makeSprite(this.pipeCap, capW, this.capHeight);
-    tCap.y = gapTop + this.capHeight / 2;
-    pair.addChild(tCap);
+    P.tBody.height = Math.max(2, tH);
+    P.tBody.y = gapTop + tH / 2;
+    P.tCap.y = gapTop + this.capHeight / 2;
 
     this.pipes.push({
       node: pair,
@@ -294,6 +289,36 @@ cc.Class({
       passed: false,
     });
     this.spawned++;
+  },
+
+  // ---- Node pool: build a pipe pair once, then reuse it ----
+  _buildPipe() {
+    const capW = this.pipeWidth + this.capWidthExtra;
+    const pair = new cc.Node("pipe");
+    const bBody = this.makeSprite(this.pipeBody, this.pipeWidth, 2);
+    const bCap = this.makeSprite(this.pipeCap, capW, this.capHeight);
+    const tBody = this.makeSprite(this.pipeBody, this.pipeWidth, 2);
+    const tCap = this.makeSprite(this.pipeCap, capW, this.capHeight);
+    pair.addChild(bBody);
+    pair.addChild(bCap);
+    pair.addChild(tBody);
+    pair.addChild(tCap);
+    pair._parts = { bBody: bBody, bCap: bCap, tBody: tBody, tCap: tCap };
+    return pair;
+  },
+
+  _acquirePipe() {
+    let pair = (this._pipePool && this._pipePool.size() > 0) ? this._pipePool.get() : null;
+    if (!pair) pair = this._buildPipe();
+    pair.active = true;
+    if (!pair.parent) this.pipeContainer.addChild(pair);
+    return pair;
+  },
+
+  _recyclePipe(node) {
+    if (!node || !cc.isValid(node)) return;
+    if (this._pipePool) this._pipePool.put(node);   // detaches from parent + deactivates
+    else node.destroy();
   },
 
   makeSprite(frame, w, h) {
