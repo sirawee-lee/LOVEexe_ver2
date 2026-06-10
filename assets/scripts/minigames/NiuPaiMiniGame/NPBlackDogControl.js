@@ -233,6 +233,7 @@ var NPBlackDogControl = cc.Class({
             wanderTimer: 0,
             wanderTarget: null,
         });
+        if (game._playSfx) game._playSfx(game.sfxBlackDogSpawn, 0.75);
         cc.log('[NiuPai] Black dog spawned in ' + section + ' at ' + dog.x + ', ' + dog.y);
     },
 
@@ -255,6 +256,7 @@ var NPBlackDogControl = cc.Class({
         if (!hitPlayer && !hitNiuPai && !hitBait) return;
 
         dog.attackTimer = game.blackDogAttackInterval;
+        if (game._playSfx) game._playSfx(game.sfxBlackDogAttack);
         if (hitBait) game._damageBigMacBait(bait, game.blackDogDamageHp);
         if (hitPlayer) game._damagePlayer(game.blackDogDamageHp);
         if (hitNiuPai) {
@@ -286,6 +288,10 @@ var NPBlackDogControl = cc.Class({
     _stunDog: function (dog, stunSeconds, useMcFlurryStaticSprite) {
         if (!dog || stunSeconds <= 0) return;
         if (this.game._flashDamageTarget) this.game._flashDamageTarget(dog.node);
+        if (useMcFlurryStaticSprite && this.game._addBlackDogDamageScore) {
+            this.game._addBlackDogDamageScore();
+        }
+        if (this.game._playSfx) this.game._playSfx(this.game.sfxBlackDogStun);
         dog.stunTimer = Math.max(dog.stunTimer || 0, stunSeconds);
         if (useMcFlurryStaticSprite) this._applyMcFlurryStunSprite(dog);
         dog.path = [];

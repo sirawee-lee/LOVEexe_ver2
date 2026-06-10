@@ -416,7 +416,7 @@ var NPNormieControl = cc.Class({
     _getRandomSpawnPosition: function () {
         var game = this.game;
         var grid = game._pathGrid ? game._pathGrid.getGrid('main') : null;
-        var tile = grid ? game._pathGrid.getRandomWalkableTile(grid) : null;
+        var tile = grid ? this._getRandomInitialSpawnTileAwayFromPlayer(grid) : null;
         if (grid && tile) return this._resolveSpawnPosition(game._pathGrid.gridTileToWorldCenter(grid, tile));
 
         return this._resolveSpawnPosition(cc.v2(
@@ -426,7 +426,7 @@ var NPNormieControl = cc.Class({
     },
 
     _getDistributedSpawnPosition: function () {
-        var tile = this._selectLeastCrowdedTile(null, 24);
+        var tile = this._selectLeastCrowdedTile(null, 24, true);
         if (tile) return this.game._pathGrid.gridTileToWorldCenter(this.game._pathGrid.getGrid('main'), tile);
         return this._getRandomSpawnPosition();
     },
@@ -466,19 +466,22 @@ var NPNormieControl = cc.Class({
         normie.directionTimer = this.game.normieDirectionMinSeconds;
     },
 
-    _selectLeastCrowdedTile: function (selfNormie, sampleCount) {
+    _selectLeastCrowdedTile: function (selfNormie, sampleCount, avoidPlayer) {
         var tiles = this._getValidSpawnTiles();
         if (!tiles || tiles.length === 0) return null;
 
         sampleCount = Math.max(1, Math.min(sampleCount || 1, tiles.length));
         var bestTile = null;
         var bestScore = -Infinity;
-        for (var i = 0; i < sampleCount; i++) {
+        var attempts = sampleCount * (avoidPlayer ? 4 : 1);
+        for (var i = 0; i < attempts; i++) {
             var tile = tiles[Math.floor(Math.random() * tiles.length)];
+            if (avoidPlayer && this._isTileNearPlayer(tile)) continue;
             var score = this._scoreDistributionTile(tile, selfNormie);
             if (score <= bestScore) continue;
             bestScore = score;
             bestTile = tile;
+            if (i >= sampleCount - 1 && bestTile) break;
         }
 
         return bestTile;
@@ -530,6 +533,33 @@ var NPNormieControl = cc.Class({
 
         this.validSpawnTiles = tiles;
         return tiles;
+    },
+
+    _getRandomInitialSpawnTileAwayFromPlayer: function (grid) {
+        var tiles = this._getValidSpawnTiles();
+        if (!tiles || tiles.length === 0) return null;
+
+        for (var i = 0; i < 80; i++) {
+            var tile = tiles[Math.floor(Math.random() * tiles.length)];
+            if (!this._isTileNearPlayer(tile)) return tile;
+        }
+
+        return this.game._pathGrid.getRandomWalkableTile(grid);
+    },
+
+    _isTileNearPlayer: function (tile) {
+        if (!tile || !this.game._playerNode) return false;
+
+        var grid = this.game._pathGrid ? this.game._pathGrid.getGrid('main') : null;
+        if (!grid) return false;
+
+        var playerTile = this.game._pathGrid.worldToGridTile(grid, this.game._playerNode.getPosition());
+        if (!playerTile) return false;
+
+        var radius = Math.max(0, this.game.normieInitialSpawnAvoidPlayerRadiusTiles || 0);
+        var dx = tile.x - playerTile.x;
+        var dy = tile.y - playerTile.y;
+        return dx * dx + dy * dy <= radius * radius;
     },
 
     _resolveSpawnPosition: function (position) {

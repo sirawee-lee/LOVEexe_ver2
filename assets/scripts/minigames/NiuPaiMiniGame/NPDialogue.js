@@ -2,12 +2,26 @@
 
 var DialogueType = {
     IntroControls: 'intro_controls',
+    TunnelIntro: 'tunnel_intro',
+    TunnelExitNoFood: 'tunnel_exit_no_food',
 };
 
 var DialogueContent = {};
 DialogueContent[DialogueType.IntroControls] = {
     text: 'Controls\nWASD / Arrow Keys: Run\nShift: Walk\nE: Interact / Use item\nP: Pause\nGet the correct food and make it out safely! good luck!',
     confirmText: '[E] Start',
+};
+DialogueContent[DialogueType.TunnelIntro] = {
+    pages: [
+        'Tunnel intro dialogue placeholder 1.',
+        'Tunnel intro dialogue placeholder 2.',
+    ],
+    confirmText: '[E] Continue',
+    finalConfirmText: '[E] Continue',
+};
+DialogueContent[DialogueType.TunnelExitNoFood] = {
+    text: "Oh shit, I didn't brought any food for Mei...",
+    confirmText: '[E] Continue',
 };
 DialogueContent.OrderFlow = {
     askOrder: {
@@ -68,6 +82,7 @@ var NPDialogue = cc.Class({
         this.game = game;
         this.activeType = this.activeType || null;
         this.onConfirm = this.onConfirm || null;
+        this.pageIndex = this.pageIndex || 0;
         this._ensureRoot();
         this._ensureOrderRoot();
     },
@@ -79,15 +94,23 @@ var NPDialogue = cc.Class({
         this._ensureRoot();
         this.activeType = type;
         this.onConfirm = onConfirm || null;
+        this.pageIndex = 0;
         this._root.active = true;
-        this._textLabel.getComponent(cc.Label).string = content.text || '';
-        this._confirmLabel.getComponent(cc.Label).string = content.confirmText || '[E] Confirm';
+        this._renderSimpleContent(content);
         this._layout();
         return true;
     },
 
     confirm: function () {
         if (!this.activeType) return false;
+
+        var content = this._getContent(this.activeType);
+        if (content && content.pages && this.pageIndex < content.pages.length - 1) {
+            this.pageIndex++;
+            this._renderSimpleContent(content);
+            this._layout();
+            return true;
+        }
 
         var callback = this.onConfirm;
         this.close();
@@ -98,6 +121,7 @@ var NPDialogue = cc.Class({
     close: function () {
         this.activeType = null;
         this.onConfirm = null;
+        this.pageIndex = 0;
         if (this._root && this._root.isValid) this._root.active = false;
         if (this._orderRoot && this._orderRoot.isValid) this._orderRoot.active = false;
     },
@@ -260,6 +284,22 @@ var NPDialogue = cc.Class({
                 ? cc.color(255, 235, 80)
                 : cc.Color.WHITE;
         }
+    },
+
+    _renderSimpleContent: function (content) {
+        if (!content) return;
+
+        var pages = content.pages || null;
+        var text = pages
+            ? (pages[this.pageIndex] || '')
+            : (content.text || '');
+        var isLastPage = !pages || this.pageIndex >= pages.length - 1;
+        var confirmText = isLastPage && content.finalConfirmText
+            ? content.finalConfirmText
+            : (content.confirmText || '[E] Confirm');
+
+        this._textLabel.getComponent(cc.Label).string = text;
+        this._confirmLabel.getComponent(cc.Label).string = confirmText;
     },
 
     _layoutOrder: function () {

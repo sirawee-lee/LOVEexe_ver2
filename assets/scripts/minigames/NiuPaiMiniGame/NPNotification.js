@@ -6,6 +6,9 @@ var NotificationType = {
     FirstApplePie: 'first_apple_pie',
     FirstBigMac: 'first_bigmac',
     FirstMcFlurry: 'first_mcflurry',
+    FirstObstacleBump: 'first_obstacle_bump',
+    WalletSeen: 'wallet_seen',
+    FirstWalletPickup: 'first_wallet_pickup',
     NiuPaiHurt: 'niupai_hurt',
 };
 
@@ -30,6 +33,18 @@ NotificationContent[NotificationType.FirstBigMac] = {
 NotificationContent[NotificationType.FirstMcFlurry] = {
     id: 'first_item_mcflurry',
     text: 'This McFlurry is freezing cold...\nMight cause some BRAIN FREEZE~',
+};
+NotificationContent[NotificationType.FirstObstacleBump] = {
+    id: 'first_obstacle_bump',
+    text: 'something is on my way...\nbut this seems pretty brittle...',
+};
+NotificationContent[NotificationType.WalletSeen] = {
+    id: 'wallet_seen',
+    text: "hey there's a wallet...\n(Walk slowly to pick it up!)",
+};
+NotificationContent[NotificationType.FirstWalletPickup] = {
+    id: 'first_wallet_pickup',
+    text: "Hmm... Hopefully somebody didn't notice >:)",
 };
 NotificationContent[NotificationType.NiuPaiHurt] = {
     id: 'niupai_hurt',

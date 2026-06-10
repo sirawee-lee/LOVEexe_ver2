@@ -6,7 +6,6 @@ var NPPathGrid = cc.Class({
     ctor: function (game) {
         this.game = game;
         this.grids = {};
-        this.debugNode = null;
     },
 
     build: function () {
@@ -113,23 +112,6 @@ var NPPathGrid = cc.Class({
             grid.offset.x + (tile.x + 0.5) * this.game.mapTileSize,
             grid.offset.y + (tile.y + 0.5) * this.game.mapTileSize
         );
-    },
-
-    drawDebug: function () {
-        var game = this.game;
-        if (game.showPathGridDebug === false || !game._world || !this.grids) return;
-
-        if (this.debugNode && this.debugNode.isValid) {
-            this.debugNode.destroy();
-        }
-
-        var root = new cc.Node('PathGridDebug');
-        root.zIndex = 998;
-        game._world.addChild(root, 998);
-        this.debugNode = root;
-
-        this._drawSingleDebug(root, this.grids.main);
-        this._drawSingleDebug(root, this.grids.tunnel);
     },
 
     _buildForSection: function (tiledMap, offset, cols, rows, name) {
@@ -328,42 +310,6 @@ var NPPathGrid = cc.Class({
         };
     },
 
-    _drawSingleDebug: function (parent, grid) {
-        if (!grid) return;
-
-        var node = new cc.Node('PathGridDebug_' + grid.name);
-        node.setPosition(0, 0);
-        parent.addChild(node, 0);
-
-        var gfx = node.addComponent(cc.Graphics);
-        var size = this.game.mapTileSize;
-
-        gfx.strokeColor = cc.color(110, 255, 170, 120);
-        gfx.lineWidth = 1;
-        gfx.rect(grid.offset.x, grid.offset.y, grid.cols * size, grid.rows * size);
-        gfx.stroke();
-
-        gfx.fillColor = cc.color(255, 40, 40, 95);
-        gfx.strokeColor = cc.color(255, 90, 90, 170);
-        gfx.lineWidth = 1;
-
-        for (var y = 0; y < grid.rows; y++) {
-            for (var x = 0; x < grid.cols; x++) {
-                if (grid.cells[y][x]) continue;
-
-                gfx.rect(
-                    grid.offset.x + x * size,
-                    grid.offset.y + y * size,
-                    size,
-                    size
-                );
-            }
-        }
-
-        gfx.fill();
-        gfx.stroke();
-        cc.log('[NiuPai] Path grid debug drawn for ' + grid.name);
-    },
 });
 
 module.exports = NPPathGrid;
