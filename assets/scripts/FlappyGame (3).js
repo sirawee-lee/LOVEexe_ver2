@@ -6,6 +6,8 @@
 
 const GameFlow = require('GameFlow');
 
+const PT_PIPE = 100;   // live points awarded for each pipe passed
+
 cc.Class({
   extends: cc.Component,
 
@@ -207,6 +209,7 @@ cc.Class({
         p.passed = true;
         this.score++;
         this.updateScore();
+        GameFlow.addScore(PT_PIPE);          // live +points per pipe
         if (this.score >= this.winThreshold) {
           this.finish(true);
           return;

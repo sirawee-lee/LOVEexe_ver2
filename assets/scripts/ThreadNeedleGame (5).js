@@ -7,6 +7,9 @@
 
 const GameFlow = require('GameFlow');
 
+const PT_THREAD = 250;   // live points per successful thread (1 of 3 levels)
+const PT_MISS   = 80;    // penalty deducted for a miss
+
 cc.Class({
     extends: cc.Component,
 
@@ -204,6 +207,8 @@ cc.Class({
     },
 
     afterSuccess() {
+        GameFlow.addScore(PT_THREAD);   // live +points: threaded one eye (1 of 3)
+
         if (this.level >= this.maxLevel) {
             this.finished = true;       // หยุดนาฬิกา
             if (this.resultLabel) this.resultLabel.string = 'You win! 🏆';
@@ -231,6 +236,7 @@ cc.Class({
     onFail() {
         this.isPlaying = false;     // หยุดเลื่อนขึ้นลง + กันกดซ้ำระหว่างอนิเมชัน
         this._sfx(this.failSfx);
+        GameFlow.addScore(-PT_MISS);   // live penalty for a miss
 
         // ป้าย "Missed :(" สีแดง (พลาดกี่ครั้งก็ได้ ไม่หักใจ ตราบใดที่ยังไม่หมดเวลา)
         if (this.resultLabel) {

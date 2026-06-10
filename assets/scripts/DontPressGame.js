@@ -9,6 +9,8 @@
 
 const GameFlow = require("GameFlow");
 
+const PT_LEVEL = 150;   // live points awarded for each level passed
+
 cc.Class({
   extends: cc.Component,
 
@@ -201,6 +203,7 @@ cc.Class({
     this.phase = "between";
     this.stopPulse();
     this._sfx(this.passSfx);
+    GameFlow.addScore(PT_LEVEL);          // live +points per level passed
     if (this.resultLabel) {
       this.resultLabel.string = "Nice!";
       this.resultLabel.node.color = cc.Color.GREEN;

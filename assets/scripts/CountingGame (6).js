@@ -16,6 +16,9 @@
 
 const GameFlow = require('GameFlow');
 
+const PT_CORRECT = 250;   // live points for a correct answer
+const PT_WRONG   = 150;   // penalty deducted for a wrong answer
+
 cc.Class({
     extends: cc.Component,
 
@@ -219,6 +222,7 @@ cc.Class({
         const correct = (this.counter === this.targetCount);
         this.results.push(correct);
         if (correct) this.correctCount++;
+        GameFlow.addScore(correct ? PT_CORRECT : -PT_WRONG);   // live +/- per answer
         this.addIcon(correct);            // show check / cross in the row
         this._sfx(correct ? this.correctSfx : this.wrongSfx);
 

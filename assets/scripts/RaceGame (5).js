@@ -18,6 +18,8 @@
 const GameFlow = require('GameFlow');
 const PixelFont = require('PixelFont');
 
+const PT_CHECKPOINT = 250;   // live points per quarter-track checkpoint (3 total)
+
 cc.Class({
     extends: cc.Component,
 
@@ -222,6 +224,7 @@ cc.Class({
         this.tapCount = 0;
         this.tapTimes.length = 0;
         this.lastTapTime = -10;
+        this._cpAwarded = 0;       // quarter-track checkpoints awarded this race
 
         this.lastDir = null;
         this.leftDown = false;
@@ -281,6 +284,13 @@ cc.Class({
 
         // Move a fixed distance per tap -> 300 taps reaches the finish.
         this.targetProgress = Math.min(this.raceDistance, this.targetProgress + this.distancePerTap);
+
+        // Live +points crossing each quarter (1/4, 2/4, 3/4); the finish is the clear bonus.
+        while (this._cpAwarded < 3 &&
+               this.targetProgress >= this.raceDistance * (this._cpAwarded + 1) * 0.25) {
+            this._cpAwarded++;
+            GameFlow.addScore(PT_CHECKPOINT);
+        }
 
         this.tapCount++;
         this.lastTapTime = this._clock;
