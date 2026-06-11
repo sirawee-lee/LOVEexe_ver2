@@ -17,6 +17,7 @@
 
 const GameFlow = require('GameFlow');
 const PixelFont = require('PixelFont');
+const ParticleFX = require('ParticleFX');   // dust kicked up behind the runner on each tap
 
 const PT_CHECKPOINT = 250;   // live points per quarter-track checkpoint (3 total)
 
@@ -303,6 +304,11 @@ cc.Class({
             this.player.sprite.spriteFrame = f[this.playerAnim.index];
         }
         this._playSfx(this.footstepSfx, 1);
+
+        // 💨 dust kicked up behind the runner's feet
+        if (this.player && this.player.node) {
+            ParticleFX.dust(this.world, this.player.node.x - 18, this.player.node.y + 16);
+        }
     },
 
     // ---------------------------------------------------------
