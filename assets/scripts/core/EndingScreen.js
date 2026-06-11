@@ -16,6 +16,7 @@
 
 var StoryState = require('StoryState');
 var PixelFont  = require('PixelFont');   // VT323 8-bit font (matches the rest of the game)
+var ParticleFX = require('ParticleFX');  // celebration confetti on the win screens
 
 // ── palette ───────────────────────────────────────────────
 var COL_BLACK   = cc.color(8, 6, 12, 255);
@@ -35,6 +36,7 @@ var EndingScreen = {
     // 3 hearts gone in the overworld (osu / typing / niupai failures).
     showGameOver: function () {
         StoryState.dialogueActive = true;   // freeze the overworld underneath
+        this._playBgm('bgm_tense', true);   // somber game-over music
         var self = this;
         this._imageScreen({
             image: 'game_over_screen',
@@ -51,6 +53,7 @@ var EndingScreen = {
     // Lost the final boss (boss love meter hit 0) -> EECS overload ending.
     showBossLose: function () {
         cc.audioEngine.stopMusic();   // stop the boss BGM so it doesn't bleed into the ending
+        this._playBgm('bgm_tense', true);   // tense "EECS overload" ending music
         StoryState.dialogueActive = true;
         var self = this;
         this._imageScreen({
@@ -74,9 +77,40 @@ var EndingScreen = {
         this._showChoice();
     },
 
+    // Play an ending BGM by name from resources/audio (loops). `force` restarts
+    // even if it's the same track; without it, re-entering a screen (e.g. back
+    // from Leaderboard/Credits) keeps the music playing instead of restarting it.
+    _playBgm: function (name, force) {
+        if (!force && this._bgmName === name) return;
+        this._bgmName = name;
+        var self = this;
+        cc.resources.load('audio/' + name, cc.AudioClip, function (err, clip) {
+            if (err || !clip || self._bgmName !== name) return;   // superseded / failed
+            try { cc.audioEngine.stopMusic(); cc.audioEngine.playMusic(clip, true); } catch (e) {}
+        });
+    },
+
+    // Puppy "yips" sprinkled on a ~3s rhythm over the dog-ending music. Tied to
+    // the current overlay node, so it stops automatically when the screen changes.
+    _startBarkRhythm: function () {
+        var node = this._overlay;
+        if (!node || !cc.isValid(node)) return;
+        cc.resources.load('audio/sfx_puppy_bark', cc.AudioClip, function (err, clip) {
+            if (err || !clip || !cc.isValid(node)) return;
+            var yip = function () {
+                if (!cc.isValid(node)) return;
+                var id = cc.audioEngine.playEffect(clip, false);
+                try { cc.audioEngine.setVolume(id, 0.55); } catch (e) {}
+            };
+            yip();   // one right away
+            cc.tween(node).delay(3).call(yip).union().repeatForever().start();
+        });
+    },
+
     // ── the girl / dog choice (black screen) ──────────────
     _showChoice: function () {
         var self = this;
+        this._playBgm('bgm_ending', true);   // celebratory "YOU DID IT!" music
         var root = this._root(COL_BLACK);
         var vs = cc.view.getVisibleSize();
         var H = vs.height;
@@ -94,6 +128,8 @@ var EndingScreen = {
             StoryState.endingRoute = 'niupai';
             self._showFinale('niupai');
         });
+
+        ParticleFX.confetti(this._overlay, vs.width, vs.height);   // 🎉 "YOU DID IT!" celebration
     },
 
     // ── the chosen finale: ending art + Leaderboard / Credits / Exit ──
@@ -119,6 +155,16 @@ var EndingScreen = {
                 { text: 'Exit',        color: COL_GREY, hi: COL_GREY_HI, onClick: function () { self._exit(); } },
             ],
         });
+
+        var vs = cc.view.getVisibleSize();
+        if (route === 'niupai') {
+            ParticleFX.niupaiEnding(this._overlay, vs.width, vs.height);   // 🦴 bones + 💗 hearts
+            this._playBgm('bgm_niupai');                                   // gentle ukulele bed
+            this._startBarkRhythm();                                       // 🐶 puppy yips every ~3s
+        } else {
+            ParticleFX.sakura(this._overlay, vs.width, vs.height);         // 🌸 cute sakura (happy ending)
+            this._playBgm('bgm_romance');                                  // romantic true-love track
+        }
     },
 
     // ── leaderboard screen (Back returns to caller) ───────
