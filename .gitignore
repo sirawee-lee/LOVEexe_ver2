@@ -49,3 +49,11 @@ Thumbs.db
 #//////////////////////////
 
 .vscode/
+
+#//////////////////////////
+# Presentation deliverables (kept out of the game repo) + Office lock files
+#//////////////////////////
+
+*.pptx
+~$*
+make_deck.py
