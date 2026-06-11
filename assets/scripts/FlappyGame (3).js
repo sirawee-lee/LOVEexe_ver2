@@ -5,6 +5,7 @@
 // Pipes are built in code from pipe_body / pipe_cap SpriteFrames (no prefabs).
 
 const GameFlow = require('GameFlow');
+const ParticleFX = require('ParticleFX');   // debris burst when the bird crashes
 
 const PT_PIPE = 100;   // live points awarded for each pipe passed
 
@@ -91,6 +92,8 @@ cc.Class({
   onLoad() {
     this.birdX = this.bird ? this.bird.x : -160;
     this._pipePool = new cc.NodePool();   // reuse pipe nodes instead of create/destroy
+    this.pipeSpacing = this.pipeSpeed * this.spawnInterval;   // even horizontal gap between pipes
+    this._halfW = cc.view.getVisibleSize().width / 2;         // for seamless ground wrap
 
     if (this.inputArea)
       this.inputArea.on(cc.Node.EventType.TOUCH_START, this.onFlap, this);
@@ -165,6 +168,7 @@ cc.Class({
   },
 
   update(dt) {
+    if (dt > 0.05) dt = 0.05;   // clamp lag spikes (e.g. right after a scene load) so nothing teleports
     if (this.phase === "ready") {
       this.readyT += dt;
       if (this.bird) this.bird.y = Math.sin(this.readyT * 4) * 10;
@@ -192,10 +196,9 @@ cc.Class({
       }
     }
 
-    // ---- spawn ----
-    this.spawnAcc += dt;
-    if (this.spawnAcc >= this.spawnInterval) {
-      this.spawnAcc -= this.spawnInterval;
+    // ---- spawn (distance-based -> perfectly even gaps, frame-rate independent) ----
+    const lastPipe = this.pipes[this.pipes.length - 1];
+    if (!lastPipe || lastPipe.node.x <= this.spawnX - this.pipeSpacing) {
       this.spawnPipe();
     }
 
@@ -333,19 +336,24 @@ cc.Class({
   },
 
   scrollGround(dt) {
-    const tiles = [this.ground1, this.ground2].filter((g) => g);
-    if (tiles.length < 2) return;
-    const w = tiles[0].width;
-    const span = w * tiles.length;
-    tiles.forEach((g) => {
-      g.x -= this.pipeSpeed * dt;
-      if (g.x + w / 2 < this.groundLeftX) g.x += span;
-    });
+    const g1 = this.ground1, g2 = this.ground2;
+    if (!g1 || !g2) return;
+    const move = this.pipeSpeed * dt;
+    g1.x -= move;
+    g2.x -= move;
+    // when a tile's right edge leaves the screen, snap it seamlessly behind the
+    // other tile (uses each tile's own width, so no drift even if widths differ)
+    const edge = -(this._halfW || 480);
+    if (g1.x + g1.width / 2 < edge) g1.x = g2.x + (g1.width + g2.width) / 2;
+    if (g2.x + g2.width / 2 < edge) g2.x = g1.x + (g1.width + g2.width) / 2;
   },
 
   finish(won) {
     this.phase = "over";
     if (!won) this._sfx(this.hitSfx);
+    if (!won && this.bird) {
+      ParticleFX.debris(this.bird.parent || this.node, this.bird.x, this.bird.y);   // 💥 crash
+    }
     if (this.messageLabel) {
       this.messageLabel.string = won
         ? "You Win!\nPassed " + this.score + " pipes"
