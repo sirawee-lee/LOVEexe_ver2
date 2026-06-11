@@ -32,10 +32,35 @@ var PauseMenu = {
     _open: false,
     _overlay: null,
     _canvas: null,
+    _overlayTarget: null,
     _barNode: null,
     _muteLbl: null,
     _vol: 7,
     _muted: false,
+    _audioClients: [],
+
+    isOpen: function () {
+        return !!this._open;
+    },
+
+    getMasterVolume: function () {
+        return this._muted ? 0 : this._vol / 10;
+    },
+
+    registerAudioClient: function (client) {
+        if (!client) return;
+        if (this._audioClients.indexOf(client) >= 0) return;
+        this._audioClients.push(client);
+    },
+
+    unregisterAudioClient: function (client) {
+        if (!client || !this._audioClients) return;
+        var kept = [];
+        for (var i = 0; i < this._audioClients.length; i++) {
+            if (this._audioClients[i] !== client) kept.push(this._audioClients[i]);
+        }
+        this._audioClients = kept;
+    },
 
     // ── lifecycle ─────────────────────────────────────────────
     init: function () {
@@ -57,7 +82,9 @@ var PauseMenu = {
         var canvas = this._getCanvas();
         if (!canvas) return;
         this._canvas = canvas;
+        this._overlayTarget = this._getOverlayTarget(canvas);
         this._open = true;
+        this._notifyAudioClients('onGlobalPauseChanged', true);
         try { cc.director.pause(); } catch (e) {}   // freeze game logic (audio keeps playing)
         this._build();
     },
@@ -66,12 +93,14 @@ var PauseMenu = {
         if (!this._open) return;
         this._open = false;
         try { cc.director.resume(); } catch (e) {}
+        this._notifyAudioClients('onGlobalPauseChanged', false);
         this._destroy();
     },
 
     _quit: function () {
         this._open = false;
         try { cc.director.resume(); } catch (e) {}   // MUST resume before loading, or the new scene loads paused
+        this._notifyAudioClients('onGlobalPauseChanged', false);
         this._destroy();
         var StoryState = require('StoryState');
         StoryState.dialogueActive = false;
@@ -81,6 +110,7 @@ var PauseMenu = {
     _destroy: function () {
         if (this._overlay && cc.isValid(this._overlay)) this._overlay.destroy();
         this._overlay = null;
+        this._overlayTarget = null;
         this._barNode = null;
         this._muteLbl = null;
     },
@@ -107,6 +137,7 @@ var PauseMenu = {
         var v = this._muted ? 0 : this._vol / 10;
         try { cc.audioEngine.setMusicVolume(v); } catch (e) {}
         try { cc.audioEngine.setEffectsVolume(v); } catch (e) {}
+        this._notifyAudioClients('onGlobalAudioVolumeChanged', v);
     },
     _setVol: function (delta) {
         this._vol = Math.max(0, Math.min(10, this._vol + delta));
@@ -118,6 +149,20 @@ var PauseMenu = {
         this._apply(); this._save(); this._refresh();
     },
 
+    _notifyAudioClients: function (method, arg) {
+        if (!this._audioClients) return;
+        var kept = [];
+        for (var i = 0; i < this._audioClients.length; i++) {
+            var client = this._audioClients[i];
+            if (!client || (client.node && !cc.isValid(client.node))) continue;
+            kept.push(client);
+            if (typeof client[method] === 'function') {
+                try { client[method](arg); } catch (e) {}
+            }
+        }
+        this._audioClients = kept;
+    },
+
     // ── UI ────────────────────────────────────────────────────
     _getCanvas: function () {
         var scene = cc.director.getScene();
@@ -127,14 +172,32 @@ var PauseMenu = {
         return c;
     },
 
+    _getOverlayTarget: function (canvas) {
+        var scene = cc.director.getScene();
+        var sceneName = scene && scene.name ? scene.name : '';
+        var camera = sceneName === 'XiaoChiBu' ? cc.Camera.main : null;
+        if (camera && camera.node && cc.isValid(camera.node)) {
+            return { parent: camera.node, camera: camera, useCamera: true };
+        }
+        return { parent: canvas, camera: null, useCamera: false };
+    },
+
     _build: function () {
         this._destroy();
-        var vs = cc.view.getVisibleSize();
-        var W = vs.width, H = vs.height;
+        var target = this._overlayTarget || this._getOverlayTarget(this._canvas);
+        var parent = target.parent || this._canvas;
+        var size = this._getOverlaySize(parent, target);
+        var W = size.width;
+        var H = size.height;
 
         var root = new cc.Node('__PauseOverlay');
-        root.parent = this._canvas;
+        root.parent = parent;
         root.zIndex = 99999;
+        root.setPosition(0, 0);
+        if (target.useCamera) {
+            var zoom = target.camera ? (target.camera.zoomRatio || 1) : 1;
+            root.setScale(zoom > 0 ? 1 / zoom : 1);
+        }
         this._overlay = root;
 
         // dim full-screen background (also eats taps on the scene underneath)
@@ -177,6 +240,17 @@ var PauseMenu = {
         this._button(root, '🏠  Main Menu', 0, -164, 320, 52, COL_GREY, COL_GREY2, function () { PauseMenu._quit(); });
 
         this._refresh();
+    },
+
+    _getOverlaySize: function (parent, target) {
+        if (target && target.useCamera) {
+            return cc.winSize;
+        }
+        if (parent && parent.getContentSize) {
+            var size = parent.getContentSize();
+            if (size && size.width > 0 && size.height > 0) return size;
+        }
+        return cc.view.getVisibleSize();
     },
 
     // redraw the volume bar + mute label from current state (no full rebuild)

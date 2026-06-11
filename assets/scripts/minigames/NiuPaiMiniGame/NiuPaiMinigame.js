@@ -9,6 +9,7 @@ var NPNormieControl = require('NPNormieControl');
 var NPNotification = require('NPNotification');
 var NPDialogue = require('NPDialogue');
 var GameProperties = require('GameProperties');
+var PauseMenu = require('PauseMenu');
 
 var DebugImmediateResultType = cc.Enum({
     Win: 0,
@@ -29,10 +30,9 @@ cc.Class({
         tunnelBgm:  { default: null, type: cc.AudioClip },
         debugImmediateResult: { default: false },
         debugImmediateResultType: { default: DebugImmediateResultType.Win, type: DebugImmediateResultType },
+        debugDisableInitialObstacles: { default: false },
         sfxCorrect: { default: null, type: cc.AudioClip },
         sfxWrong:   { default: null, type: cc.AudioClip },
-        sfxPause: { default: null, type: cc.AudioClip },
-        sfxResume: { default: null, type: cc.AudioClip },
         sfxNotification: { default: null, type: cc.AudioClip },
         sfxDialogueConfirm: { default: null, type: cc.AudioClip },
         sfxOrderConfirm: { default: null, type: cc.AudioClip },
@@ -68,8 +68,18 @@ cc.Class({
         initialObstacleSprite: { default: null, type: cc.SpriteFrame },
         gameCamera: { default: null, type: cc.Camera },
         mcDonaldRegionSprite: { default: null, type: cc.SpriteFrame },
+        notificationFrameSprite: { default: null, type: cc.SpriteFrame },
+        dialoguePanelSprite: { default: null, type: cc.SpriteFrame },
+        dialogueButtonSprite: { default: null, type: cc.SpriteFrame },
+        hudPanelSprite: { default: null, type: cc.SpriteFrame },
+        hudItemFrameSprite: { default: null, type: cc.SpriteFrame },
+        guiShadowSprite: { default: null, type: cc.SpriteFrame },
         orderingStatusSprite: { default: null, type: cc.SpriteFrame },
+        orderingStatusFrames: { default: [], type: [cc.SpriteFrame] },
+        orderingStatusSheet: { default: null, type: cc.Texture2D },
         blackDogFollowingStatusSprite: { default: null, type: cc.SpriteFrame },
+        blackDogRobStatusFrames: { default: [], type: [cc.SpriteFrame] },
+        blackDogRobStatusSheet: { default: null, type: cc.Texture2D },
         normieSheet: { default: null, type: cc.Texture2D },
         normieSheets: { default: [], type: [cc.Texture2D] },
         applePieSprite: { default: null, type: cc.SpriteFrame },
@@ -81,6 +91,7 @@ cc.Class({
         mcFlurryExplosionSheet: { default: null, type: cc.Texture2D },
         obstacleDestroyFrames: { default: [], type: [cc.SpriteFrame] },
         obstacleDestroySheet: { default: null, type: cc.Texture2D },
+        healParticleSprite: { default: null, type: cc.SpriteFrame },
         healEffectFrames: { default: [], type: [cc.SpriteFrame] },
         healEffectSheet: { default: null, type: cc.Texture2D },
         playerMoveEffectFrames: { default: [], type: [cc.SpriteFrame] },
@@ -102,9 +113,9 @@ cc.Class({
         GameProperties.applyTo(this);
         this._onResult = null;
         this._active = false;
-        this._paused = false;
         this._bgmId = -1;
         this._currentBgmClip = null;
+        this._bgmPausedByGlobalPause = false;
         this._runtimeScore = 0;
         this._elapsedGameSeconds = 0;
         this._debugImmediateResultTriggered = false;
@@ -129,6 +140,8 @@ cc.Class({
         this._mcDonaldControl = null;
         this._normieControl = null;
         this._blackDogs = [];
+        this._mainBlackDogSpawnTimer = -1;
+        this._mainBlackDogsSpawned = false;
         this._keys = {};
         this._loadedTilemaps = 0;
         this._colliderCount = 0;
@@ -180,11 +193,12 @@ cc.Class({
         this._niuPaiHpBar = null;
         this._criticalHpOverlayNode = null;
         this._tunnelVisionOverlayNode = null;
-        this._pauseOverlayNode = null;
         this._notificationControl = null;
         this._dialogueControl = null;
+        this._dialogueHidesHud = false;
         this._introDialogOpen = false;
         this._shownTunnelIntroDialogue = false;
+        this._hasEnteredTunnelSection = false;
         this._shownItemNotifications = {};
         this._shownNormieBumpNotification = false;
         this._shownObstacleBumpNotification = false;
@@ -199,11 +213,10 @@ cc.Class({
 
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this._onKeyDown, this);
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this._onKeyUp, this);
+        if (PauseMenu && PauseMenu.registerAudioClient) PauseMenu.registerAudioClient(this);
     },
 
     onDisable: function () {
-        this._paused = false;
-        this._setPauseOverlayVisible(false);
         this._stopPlayerBody();
         if (this._niuPaiControl) this._niuPaiControl.stop();
         if (this._blackDogControl) this._blackDogControl.stopAll();
@@ -218,6 +231,7 @@ cc.Class({
     },
 
     onDestroy: function () {
+        if (PauseMenu && PauseMenu.unregisterAudioClient) PauseMenu.unregisterAudioClient(this);
         cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this._onKeyDown, this);
         cc.systemEvent.off(cc.SystemEvent.EventType.KEY_UP, this._onKeyUp, this);
         this._stopPlayerBody();
@@ -250,7 +264,6 @@ cc.Class({
 
     _initGame: function () {
         this._active = true;
-        this._paused = false;
         this._keys = {};
         this._runtimeScore = 0;
         this._elapsedGameSeconds = 0;
@@ -276,6 +289,7 @@ cc.Class({
         this._shownNormieBumpNotification = false;
         this._shownObstacleBumpNotification = false;
         this._clearWorldItems();
+        this._hasEnteredTunnelSection = false;
         this._mcHp = this.mcMaxHp;
         this._niuPaiHp = this.niuPaiMaxHp;
         this._enablePhysics();
@@ -284,6 +298,7 @@ cc.Class({
         if (this._notificationControl) this._notificationControl.clear();
         this._buildWorld();
         this._setupCamera();
+        this._ensureHudRootParent();
         this._updateHud(0);
         this._showIntroDialogue();
         this._playSectionBgm('main');
@@ -330,7 +345,6 @@ cc.Class({
         this._createPlayer();
         this._niuPaiControl.createNiuPai();
         this._ensureActorHpBars();
-        this._blackDogControl.createBlackDogs();
         this._mcDonaldControl.createQueue();
         this._normieControl.createNormies(this._getInitialRoamingNormieCount());
         this._drawTeleportPrompts();
@@ -360,6 +374,11 @@ cc.Class({
     },
 
     _addInitialObstacles: function (tiledMap, mapName, mapOffset) {
+        if (this.debugDisableInitialObstacles) {
+            cc.log('[NiuPai] Debug disabled initial obstacles for ' + mapName);
+            return;
+        }
+
         var group = tiledMap.getObjectGroup(this.initialObstacleLayerName);
         if (!group) return;
 
@@ -761,6 +780,7 @@ cc.Class({
         }
 
         camera.zoomRatio = this.cameraZoomRatio;
+        this._ensureHudRootParent();
         this._updateCameraFollow();
     },
 
@@ -889,12 +909,7 @@ cc.Class({
     },
 
     _onKeyDown: function (e) {
-        if (this._isPauseKey(e.keyCode)) {
-            this._togglePause();
-            return;
-        }
-
-        if (this._paused) return;
+        if (PauseMenu && PauseMenu.isOpen && PauseMenu.isOpen()) return;
 
         if (!this._orderOpen && this._dialogueControl && this._dialogueControl.isSimpleOpen()) {
             if (e.keyCode === cc.macro.KEY.e || e.keyCode === cc.macro.KEY.enter) {
@@ -925,94 +940,11 @@ cc.Class({
         if (e.keyCode === cc.macro.KEY.r) this._orderBackHeld = false;
     },
 
-    _isPauseKey: function (keyCode) {
-        return keyCode === cc.macro.KEY.p || keyCode === 80;
-    },
-
-    _togglePause: function () {
-        if (!this._active) return;
-        this._setPaused(!this._paused);
-    },
-
-    _setPaused: function (paused) {
-        this._paused = !!paused;
-        this._keys = {};
-        this._stopAllActorMovement();
-        this._setPauseOverlayVisible(this._paused);
-        this._playSfx(this._paused ? this.sfxPause : this.sfxResume);
-
-        if (this._bgmId >= 0) {
-            if (this._paused && cc.audioEngine.pause) cc.audioEngine.pause(this._bgmId);
-            else if (!this._paused && cc.audioEngine.resume) cc.audioEngine.resume(this._bgmId);
-        }
-
-        cc.log('[NiuPai] Pause=' + this._paused);
-    },
-
     _stopAllActorMovement: function () {
         this._stopPlayerBody();
         if (this._niuPaiControl) this._niuPaiControl.stop();
         if (this._blackDogControl) this._blackDogControl.stopAll();
         if (this._normieControl) this._normieControl.stopAll();
-    },
-
-    _setPauseOverlayVisible: function (visible) {
-        if (visible) {
-            this._ensurePauseOverlay();
-            this._updatePauseOverlayPosition();
-            this._pauseOverlayNode.active = true;
-        } else if (this._pauseOverlayNode) {
-            this._pauseOverlayNode.active = false;
-        }
-    },
-
-    _ensurePauseOverlay: function () {
-        if (this._pauseOverlayNode && this._pauseOverlayNode.isValid) return;
-
-        var root = new cc.Node('PauseOverlay');
-        root.active = false;
-        root.zIndex = 2000;
-        this.node.addChild(root, 2000);
-        this._pauseOverlayNode = root;
-
-        var bg = new cc.Node('PauseOverlayBg');
-        bg.setContentSize(260, 92);
-        bg.setPosition(0, 0);
-        root.addChild(bg, 0);
-        var gfx = bg.addComponent(cc.Graphics);
-        gfx.fillColor = cc.color(12, 12, 20, 190);
-        gfx.strokeColor = cc.color(245, 245, 255, 220);
-        gfx.lineWidth = 2;
-        gfx.rect(-130, -46, 260, 92);
-        gfx.fill();
-        gfx.stroke();
-
-        var titleNode = new cc.Node('PauseTitle');
-        var title = titleNode.addComponent(cc.Label);
-        title.string = 'PAUSED';
-        title.fontSize = 28;
-        title.font = this.labelFont;
-        title.lineHeight = 32;
-        title.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-        titleNode.color = cc.color(255, 245, 190);
-        titleNode.setPosition(0, 12);
-        root.addChild(titleNode, 1);
-
-        var hintNode = new cc.Node('PauseHint');
-        var hint = hintNode.addComponent(cc.Label);
-        hint.string = 'Press P to resume';
-        hint.fontSize = 13;
-        hint.lineHeight = 16;
-        hint.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-        hint.font = this.labelFont;
-        hintNode.color = cc.color(225, 230, 245);
-        hintNode.setPosition(0, -22);
-        root.addChild(hintNode, 1);
-    },
-
-    _updatePauseOverlayPosition: function () {
-        if (!this._pauseOverlayNode || !this._camera || !this._camera.node) return;
-        this._pauseOverlayNode.setPosition(this._getCameraPositionInGameNode());
     },
 
     _updatePlayerMovement: function (dt) {
@@ -1387,8 +1319,26 @@ cc.Class({
         if (this._dialogueControl) this._dialogueControl.update();
     },
 
-    _drawPanel: function (node, width, height, fillColor, strokeColor) {
+    _drawPanel: function (node, width, height, fillColor, strokeColor, spriteFrame) {
+        if (!node || !node.isValid) return;
+
+        node.setContentSize(width, height);
+
+        var sprite = node.getComponent(cc.Sprite);
         var gfx = node.getComponent(cc.Graphics);
+        if (spriteFrame) {
+            if (!sprite) sprite = node.addComponent(cc.Sprite);
+            sprite.spriteFrame = spriteFrame;
+            sprite.type = cc.Sprite.Type.SLICED;
+            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            node.setContentSize(width, height);
+            if (gfx) gfx.clear();
+            this._drawGuiShadow(node, width, height, 0);
+            return;
+        }
+
+        if (sprite) sprite.spriteFrame = null;
+        if (!gfx) gfx = node.addComponent(cc.Graphics);
         gfx.clear();
         gfx.fillColor = fillColor;
         gfx.strokeColor = strokeColor;
@@ -1396,19 +1346,65 @@ cc.Class({
         gfx.rect(-width / 2, -height / 2, width, height);
         gfx.fill();
         gfx.stroke();
+        this._drawGuiShadow(node, width, height, 0);
+    },
+
+    _drawGuiShadow: function (node, width, height, centerOffsetX) {
+        if (!node || !node.isValid || !node.parent) return;
+
+        var oldChildShadow = node.getChildByName('GuiDropShadow');
+        if (oldChildShadow && oldChildShadow.isValid) oldChildShadow.destroy();
+
+        var shadowName = node.name + '_GuiDropShadow';
+        var shadow = node.parent.getChildByName(shadowName);
+        if (!this.guiShadowSprite) {
+            if (shadow && shadow.isValid) shadow.active = false;
+            return;
+        }
+
+        if (!shadow || !shadow.isValid) {
+            shadow = new cc.Node(shadowName);
+            shadow.setAnchorPoint(0.5, 0.5);
+            node.parent.addChild(shadow, (node.zIndex || 0) - 1);
+            var sprite = shadow.addComponent(cc.Sprite);
+            sprite.type = cc.Sprite.Type.SLICED;
+            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        }
+
+        shadow.zIndex = (node.zIndex || 0) - 1;
+        var shadowSprite = shadow.getComponent(cc.Sprite);
+        shadowSprite.spriteFrame = this.guiShadowSprite;
+        shadowSprite.type = cc.Sprite.Type.SLICED;
+        shadowSprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        shadow.setContentSize(width, height);
+        shadow.setPosition(
+            node.x + (centerOffsetX || 0) + this._getGuiShadowOffsetX(),
+            node.y + this._getGuiShadowOffsetY()
+        );
+        shadow.active = true;
+    },
+
+    _getGuiShadowOffsetX: function () {
+        return typeof this.guiShadowOffsetX === 'number' ? this.guiShadowOffsetX : -3;
+    },
+
+    _getGuiShadowOffsetY: function () {
+        return typeof this.guiShadowOffsetY === 'number' ? this.guiShadowOffsetY : -3;
     },
 
     _ensureHud: function () {
         if (this._hudRoot && this._hudRoot.isValid) {
-            this._hudRoot.active = true;
+            this._hudRoot.active = !this._dialogueHidesHud;
             this._ensureObjectiveUi();
             return;
         }
 
         var root = new cc.Node('NiuPaiHud');
         root.zIndex = 1500;
+        root.active = !this._dialogueHidesHud;
         this.node.addChild(root, 1500);
         this._hudRoot = root;
+        this._ensureHudRootParent();
 
         this._hudBg = new cc.Node('HudPanel');
         this._hudBg.addComponent(cc.Graphics);
@@ -1425,20 +1421,37 @@ cc.Class({
         root.addChild(spriteNode, 2);
         this._hudItemSprite = spriteNode;
 
-        this._hudHoldingLabel = this._mkHudLabel('HudHoldingLabel', '', 9, cc.Color.WHITE);
+        this._hudHoldingLabel = this._mkHudLabel('HudHoldingLabel', '', 16, cc.Color.BLACK);
         root.addChild(this._hudHoldingLabel, 2);
 
-        this._hudSpoilLabel = this._mkHudLabel('HudSpoilLabel', '', 9, cc.Color.WHITE);
+        this._hudSpoilLabel = this._mkHudLabel('HudSpoilLabel', '', 16, cc.Color.BLACK);
         root.addChild(this._hudSpoilLabel, 2);
 
-        this._hudScoreLabel = this._mkHudLabel('HudScoreLabel', '', 9, cc.Color.WHITE);
+        this._hudScoreLabel = this._mkHudLabel('HudScoreLabel', '', 16, cc.Color.BLACK);
         root.addChild(this._hudScoreLabel, 2);
 
-        this._hudHpLabel = this._mkHudLabel('HudHpLabel', '', 9, cc.Color.WHITE);
+        this._hudHpLabel = this._mkHudLabel('HudHpLabel', '', 16, cc.Color.BLACK);
         root.addChild(this._hudHpLabel, 2);
 
         this._ensureObjectiveUi();
         this._ensureCriticalHpOverlay();
+    },
+
+    _setHudHiddenForDialogue: function (hidden) {
+        this._dialogueHidesHud = !!hidden;
+        if (this._hudRoot && this._hudRoot.isValid) {
+            this._hudRoot.active = !this._dialogueHidesHud;
+        }
+    },
+
+    _ensureHudRootParent: function () {
+        if (!this._hudRoot || !this._hudRoot.isValid) return;
+        if (!this._camera || !this._camera.node || !this._camera.node.isValid) return;
+        if (this._hudRoot.parent === this._camera.node) return;
+
+        this._hudRoot.parent = this._camera.node;
+        this._hudRoot.zIndex = 1500;
+        this._hudRoot.setPosition(0, 0);
     },
 
     _ensureObjectiveUi: function () {
@@ -1518,11 +1531,36 @@ cc.Class({
     },
 
     _resumeAfterDialogue: function () {
+        if (this._dialogueControl && this._dialogueControl.isSimpleOpen()) {
+            this._dialogueControl.close();
+        }
         this._keys = {};
         this._introDialogOpen = false;
         this._stopPlayerBody();
         this._updateOrderTrigger();
         this._updateHud(0);
+        this._scheduleMainBlackDogSpawn();
+    },
+
+    _scheduleMainBlackDogSpawn: function () {
+        if (this._mainBlackDogsSpawned) return;
+        if (!this._blackDogControl) return;
+        if (this._mainBlackDogSpawnTimer >= 0) return;
+
+        this._mainBlackDogSpawnTimer = Math.max(0, this.mainBlackDogSpawnDelay || 0);
+    },
+
+    _updateMainBlackDogSpawn: function (dt) {
+        if (this._mainBlackDogsSpawned) return;
+        if (!this._blackDogControl) return;
+        if (this._mainBlackDogSpawnTimer < 0) return;
+
+        this._mainBlackDogSpawnTimer = Math.max(0, this._mainBlackDogSpawnTimer - Math.max(0, dt || 0));
+        if (this._mainBlackDogSpawnTimer > 0) return;
+
+        this._mainBlackDogsSpawned = true;
+        this._mainBlackDogSpawnTimer = -1;
+        this._blackDogControl.createBlackDogs();
     },
 
     _showIntroDialogue: function () {
@@ -1659,35 +1697,47 @@ cc.Class({
     _updateHudPosition: function () {
         if (!this._hudRoot) return;
 
-        var cameraPos = this._getCameraPositionInGameNode();
-        this._hudRoot.setPosition(cameraPos);
-
         var zoom = this._camera ? (this._camera.zoomRatio || 1) : 1;
-        var viewW = cc.winSize.width / zoom;
-        var viewH = cc.winSize.height / zoom;
-        var hudH = this.hudHeight;
-        var hudY = -viewH / 2 + hudH / 2;
-        var leftX = -viewW / 2;
-        var rightX = viewW / 2;
+        this._ensureHudRootParent();
 
+        var cameraHud = this._camera && this._camera.node && this._hudRoot.parent === this._camera.node;
+        if (cameraHud) {
+            this._hudRoot.setPosition(0, 0);
+            this._hudRoot.setScale(1 / zoom);
+        } else {
+            var cameraPos = this._getCameraPositionInGameNode();
+            this._hudRoot.setPosition(cameraPos);
+            this._hudRoot.setScale(1, 1);
+        }
+
+        var viewW = cameraHud ? cc.winSize.width : cc.winSize.width / zoom;
+        var viewH = cameraHud ? cc.winSize.height : cc.winSize.height / zoom;
+        var hudH = this.hudHeight;
+        var hudMargin = Math.max(0, this.hudHorizontalMargin || 0);
+        var hudW = Math.max(1, viewW - hudMargin * 2);
+        var hudY = -viewH / 2 + hudH / 2 + 10;
+        var leftX = -hudW / 2;
+        var rightX = hudW / 2;
+
+        this._hudBg.setPosition(0, hudY);
         this._drawPanel(
             this._hudBg,
-            viewW,
+            hudW,
             hudH,
             cc.color(148, 24, 112, 215),
-            cc.color(255, 80, 230, 240)
+            cc.color(255, 80, 230, 240),
+            this.hudPanelSprite
         );
-        this._hudBg.setPosition(0, hudY);
 
         var iconX = leftX + 24;
         var textY = hudY;
         this._hudItemFallback.setPosition(iconX, hudY);
         this._hudItemSprite.setPosition(iconX, hudY);
         this._hudHoldingLabel.setPosition(leftX + 48, textY);
-        this._hudSpoilLabel.setPosition(leftX + viewW * 0.35, textY);
-        this._hudScoreLabel.setPosition(leftX + viewW * 0.56, textY);
+        this._hudSpoilLabel.setPosition(leftX + hudW * 0.35, textY);
+        this._hudScoreLabel.setPosition(leftX + hudW * 0.56, textY);
         this._hudHpLabel.setPosition(rightX - 150, textY);
-        this._updateObjectiveUi(leftX, -viewH / 2, viewW, viewH);
+        this._updateObjectiveUi(0, -viewH / 2, viewW, viewH);
     },
 
     _refreshHudContent: function () {
@@ -1706,7 +1756,7 @@ cc.Class({
         var frame = this._getHeldItemSpriteFrame();
         sprite.spriteFrame = frame;
         this._hudItemSprite.active = !!frame;
-        this._drawHeldItemFallback(!frame);
+        this._drawHeldItemFallback(true);
         this._refreshActorHpBars();
         this._updateObjectiveUi();
         this._updateTunnelVisionOverlay();
@@ -1722,16 +1772,22 @@ cc.Class({
         if (!this._objectiveRoot.active) return;
 
         var zoom = this._camera ? (this._camera.zoomRatio || 1) : 1;
-        viewW = viewW || cc.winSize.width / zoom;
-        viewH = viewH || cc.winSize.height / zoom;
-        leftX = typeof leftX === 'number' ? leftX : -viewW / 2;
+        var cameraHud = this._camera && this._camera.node &&
+            this._hudRoot && this._hudRoot.parent === this._camera.node;
+        viewW = viewW || (cameraHud ? cc.winSize.width : cc.winSize.width / zoom);
+        viewH = viewH || (cameraHud ? cc.winSize.height : cc.winSize.height / zoom);
+        if (typeof leftX !== 'number') {
+            var hudMargin = Math.max(0, this.hudHorizontalMargin || 0);
+            var hudW = Math.max(1, viewW - hudMargin * 2);
+            leftX = -hudW / 2;
+        }
         bottomY = typeof bottomY === 'number' ? bottomY : -viewH / 2;
 
         var panelW = Math.max(120, this.objectivePanelWidth || 210);
         var panelH = Math.max(28, this.objectivePanelHeight || 46);
         var hudTop = bottomY + this.hudHeight;
-        var panelX = leftX + 10;
-        var panelY = hudTop + panelH / 2 + 6;
+        var panelX = leftX;
+        var panelY = hudTop + 10 + panelH / 2 + 8;
         this._objectiveRoot.setPosition(panelX, panelY);
         this._objectiveRoot.setContentSize(panelW, panelH);
 
@@ -1770,6 +1826,34 @@ cc.Class({
         gfx.rect(0, -height / 2, width, height);
         gfx.fill();
         gfx.stroke();
+        this._drawObjectiveShadow(width, height);
+    },
+
+    _drawObjectiveShadow: function (width, height) {
+        if (!this._objectiveBg || !this._objectiveBg.isValid || !this._objectiveBg.parent) return;
+
+        var shadow = this._objectiveBg.parent.getChildByName('ObjectivePanel_RectShadow');
+        if (!shadow || !shadow.isValid) {
+            shadow = new cc.Node('ObjectivePanel_RectShadow');
+            shadow.setAnchorPoint(0, 0.5);
+            shadow.zIndex = (this._objectiveBg.zIndex || 0) - 1;
+            this._objectiveBg.parent.addChild(shadow, shadow.zIndex);
+            shadow.addComponent(cc.Graphics);
+        }
+
+        shadow.zIndex = (this._objectiveBg.zIndex || 0) - 1;
+        shadow.setContentSize(width, height);
+        shadow.setPosition(
+            this._objectiveBg.x + this._getGuiShadowOffsetX(),
+            this._objectiveBg.y + this._getGuiShadowOffsetY()
+        );
+        shadow.active = true;
+
+        var gfx = shadow.getComponent(cc.Graphics);
+        gfx.clear();
+        gfx.fillColor = cc.color(0, 0, 0, 125);
+        gfx.rect(0, -height / 2, width, height);
+        gfx.fill();
     },
 
     _drawObjectiveArrow: function () {
@@ -1912,19 +1996,21 @@ cc.Class({
 
     _drawHeldItemFallback: function (visible) {
         var gfx = this._hudItemFallback.getComponent(cc.Graphics);
-        gfx.clear();
         this._hudItemFallback.active = visible;
-        if (!visible) return;
+        if (!visible) {
+            if (gfx) gfx.clear();
+            return;
+        }
 
         var size = this.hudIconSize;
-        gfx.fillColor = this._heldItem
-            ? cc.color(255, 220, 100, 220)
-            : cc.color(80, 65, 88, 220);
-        gfx.strokeColor = cc.color(255, 235, 180, 230);
-        gfx.lineWidth = 1;
-        gfx.rect(-size / 2, -size / 2, size, size);
-        gfx.fill();
-        gfx.stroke();
+        this._drawPanel(
+            this._hudItemFallback,
+            size,
+            size,
+            this._heldItem ? cc.color(255, 220, 100, 220) : cc.color(80, 65, 88, 220),
+            cc.color(255, 235, 180, 230),
+            this.hudItemFrameSprite
+        );
     },
 
     _setHeldItem: function (item) {
@@ -2409,6 +2495,8 @@ cc.Class({
         if (!actorNode || !actorNode.isValid) return false;
         this._playSfx(this.sfxHeal, 0.85);
 
+        if (this._playHealParticleEffect(actorNode)) return true;
+
         var frames = this._getHealEffectSpriteFrames();
         if (!frames || frames.length === 0) return this._playHealFallbackEffect(actorNode);
 
@@ -2858,6 +2946,7 @@ cc.Class({
     },
 
     _setOrderingStatusIcon: function (actorNode, active, frameH) {
+        var frames = this._getOrderingStatusFrames();
         return this._setActorStatusIcon(
             actorNode,
             'NPOrderingStatusIcon',
@@ -2865,11 +2954,43 @@ cc.Class({
             this.orderingStatusSprite,
             Math.max(6, this.orderingStatusIconSize || 18),
             frameH / 2 + (this.orderingStatusYOffset || 28),
-            'ordering'
+            'ordering',
+            frames,
+            Math.max(1, this.orderingStatusFps || 8)
         );
     },
 
+    _getOrderingStatusFrames: function () {
+        if (this.orderingStatusFrames && this.orderingStatusFrames.length > 0) {
+            return this.orderingStatusFrames;
+        }
+
+        var frameW = Math.max(1, this.orderingStatusFrameW || 32);
+        var frameH = Math.max(1, this.orderingStatusFrameH || 32);
+        var frameCount = Math.max(1, this.orderingStatusFrameCount || 8);
+
+        if (this.orderingStatusSheet) {
+            return this._getSpriteFramesFromSheet(null, this.orderingStatusSheet, frameW, frameH, frameCount);
+        }
+
+        if (this.orderingStatusSprite && this.orderingStatusSprite.getTexture) {
+            var texture = this.orderingStatusSprite.getTexture();
+            if (texture && texture.width >= frameW * frameCount && texture.height >= frameH) {
+                return this._getSpriteFramesFromSheet(null, texture, frameW, frameH, frameCount);
+            }
+        }
+
+        return null;
+    },
+
     _setBlackDogFollowingStatusIcon: function (dogNode, active) {
+        var frames = this._getSpriteFramesFromSheet(
+            this.blackDogRobStatusFrames,
+            this.blackDogRobStatusSheet,
+            this.blackDogRobStatusFrameW,
+            this.blackDogRobStatusFrameH,
+            this.blackDogRobStatusFrameCount
+        );
         return this._setActorStatusIcon(
             dogNode,
             'NPBlackDogFollowingStatusIcon',
@@ -2877,11 +2998,13 @@ cc.Class({
             this.blackDogFollowingStatusSprite,
             Math.max(6, this.blackDogFollowingStatusIconSize || 18),
             this.blackDogFrameH / 2 + (this.blackDogFollowingStatusYOffset || 26),
-            'following'
+            'following',
+            frames,
+            Math.max(1, this.blackDogRobStatusFps || 8)
         );
     },
 
-    _setActorStatusIcon: function (actorNode, childName, active, spriteFrame, size, y, fallbackType) {
+    _setActorStatusIcon: function (actorNode, childName, active, spriteFrame, size, y, fallbackType, frames, fps) {
         if (!actorNode || !actorNode.isValid) return false;
 
         var node = actorNode.getChildByName(childName);
@@ -2902,6 +3025,17 @@ cc.Class({
 
         var sprite = node.getComponent(cc.Sprite);
         var gfx = node.getComponent(cc.Graphics);
+        if (frames && frames.length > 0) {
+            if (gfx) {
+                gfx.clear();
+                gfx.destroy();
+            }
+            if (!sprite) sprite = node.addComponent(cc.Sprite);
+            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            this._updateStatusIconAnimation(sprite, frames, fps);
+            return true;
+        }
+
         if (spriteFrame) {
             if (gfx) {
                 gfx.clear();
@@ -2920,6 +3054,69 @@ cc.Class({
         if (!gfx) gfx = node.addComponent(cc.Graphics);
         this._drawStatusIconFallback(gfx, size, fallbackType);
         return true;
+    },
+
+    _playHealParticleEffect: function (actorNode) {
+        if (!this.healParticleSprite || !actorNode || !actorNode.isValid) return false;
+
+        var node = new cc.Node('HealParticle');
+        node.setPosition(0, this.healParticleYOffset || 0);
+        actorNode.addChild(node, 65);
+
+        var particle = node.addComponent(cc.ParticleSystem);
+        particle.custom = true;
+        particle.spriteFrame = this.healParticleSprite;
+        particle.playOnLoad = false;
+        particle.autoRemoveOnFinish = false;
+        particle.duration = Math.max(0.05, this.healParticleDuration || 0.45);
+        particle.emitterMode = cc.ParticleSystem.EmitterMode.GRAVITY;
+        particle.positionType = cc.ParticleSystem.PositionType.RELATIVE;
+        particle.totalParticles = Math.max(1, this.healParticleTotal || 28);
+        particle.emissionRate = Math.max(1, this.healParticleEmissionRate || 80);
+        particle.life = Math.max(0.01, this.healParticleLife || 0.45);
+        particle.lifeVar = particle.life * 0.35;
+        particle.angle = 90;
+        particle.angleVar = Math.max(0, this.healParticleAngleVar || 180);
+        particle.speed = Math.max(0, this.healParticleSpeed || 28);
+        particle.speedVar = Math.max(0, this.healParticleSpeedVar || 12);
+        particle.gravity = cc.v2(0, Math.max(0, this.healParticleGravityY || 14));
+        particle.radialAccel = Math.max(0, this.healParticleRadialAccel || 8);
+        particle.radialAccelVar = 0;
+        particle.tangentialAccel = 0;
+        particle.tangentialAccelVar = 0;
+        particle.startSize = Math.max(1, this.healParticleStartSize || 8);
+        particle.startSizeVar = particle.startSize * 0.3;
+        particle.endSize = Math.max(0, this.healParticleEndSize || 1);
+        particle.endSizeVar = 0;
+        particle.startColor = cc.color(130, 255, 165, 210);
+        particle.startColorVar = cc.color(30, 20, 30, 35);
+        particle.endColor = cc.color(210, 255, 220, 0);
+        particle.endColorVar = cc.color(20, 20, 20, 0);
+        particle.posVar = this.healParticlePosVar || cc.v2(12, 10);
+        particle.sourcePos = cc.v2(0, 0);
+        particle.startSpin = 0;
+        particle.startSpinVar = 45;
+        particle.endSpin = 0;
+        particle.endSpinVar = 45;
+        particle.rotationIsDir = false;
+        particle.resetSystem();
+
+        var life = particle.duration + particle.life + particle.lifeVar + 0.1;
+        node.runAction(cc.sequence(
+            cc.delayTime(life),
+            cc.callFunc(function () {
+                if (node && node.isValid) node.destroy();
+            })
+        ));
+        return true;
+    },
+
+    _updateStatusIconAnimation: function (sprite, frames, fps) {
+        if (!sprite || !frames || frames.length === 0) return;
+
+        var now = Date.now() / 1000;
+        var frameIndex = Math.floor(now * Math.max(1, fps || 8)) % frames.length;
+        sprite.spriteFrame = frames[frameIndex];
     },
 
     _drawStatusIconFallback: function (gfx, size, fallbackType) {
@@ -3297,6 +3494,13 @@ cc.Class({
         if (this._teleportCooldown > 0) return;
 
         if (touching) {
+            if (!this._hasEnteredTunnelSection && !this._heldItem) {
+                this._playSfx(this.sfxTunnelExitBlocked);
+                this._showTunnelExitNoFoodDialogue();
+                this._setTeleportNeedsExit(triggerRect);
+                this._teleportCooldown = 0.2;
+                return;
+            }
             this._teleportToTunnel();
         }
     },
@@ -3648,6 +3852,7 @@ cc.Class({
 
         this._playSfx(this.sfxTeleport);
         this._currentSection = 'tunnel';
+        this._hasEnteredTunnelSection = true;
         this._teleportCooldown = 0.35;
         this._setTeleportNeedsExit(this._makeTeleportTriggerRect(target));
         this._playerNode.setPosition(target);
@@ -4268,10 +4473,8 @@ cc.Class({
 
         var finalScore = this._calculateFinalScore(!!win);
         this._active = false;
-        this._paused = false;
         this._introDialogOpen = false;
         this._cameraShakeTimer = 0;
-        this._setPauseOverlayVisible(false);
         if (this._criticalHpOverlayNode) this._criticalHpOverlayNode.active = false;
         if (this._tunnelVisionOverlayNode) this._tunnelVisionOverlayNode.active = false;
         if (this._objectiveRoot) this._objectiveRoot.active = false;
@@ -4309,7 +4512,9 @@ cc.Class({
         var configuredVolume = typeof this.sfxVolume === 'number' ? this.sfxVolume : 0.9;
         var baseVolume = Math.max(0, Math.min(1, configuredVolume));
         var scale = volumeScale === undefined ? 1 : Math.max(0, volumeScale);
-        return cc.audioEngine.play(clip, false, Math.max(0, Math.min(1, baseVolume * scale)));
+        var volume = Math.max(0, Math.min(1, baseVolume * scale * this._getMasterAudioVolume()));
+        if (volume <= 0) return -1;
+        return cc.audioEngine.play(clip, false, volume);
     },
 
     _playSectionBgm: function (section) {
@@ -4322,8 +4527,10 @@ cc.Class({
         this._currentBgmClip = clip || null;
         if (!clip) return;
 
-        var volume = typeof this.bgmVolume === 'number' ? this.bgmVolume : 0.65;
-        this._bgmId = cc.audioEngine.play(clip, true, Math.max(0, Math.min(1, volume)));
+        this._bgmId = cc.audioEngine.play(clip, true, this._getBgmEffectiveVolume());
+        if (PauseMenu && PauseMenu.isOpen && PauseMenu.isOpen()) {
+            this.onGlobalPauseChanged(true);
+        }
     },
 
     _stopBgm: function () {
@@ -4332,21 +4539,51 @@ cc.Class({
             this._bgmId = -1;
         }
         this._currentBgmClip = null;
+        this._bgmPausedByGlobalPause = false;
+    },
+
+    _getMasterAudioVolume: function () {
+        if (PauseMenu && PauseMenu.getMasterVolume) {
+            return Math.max(0, Math.min(1, PauseMenu.getMasterVolume()));
+        }
+        return 1;
+    },
+
+    _getBgmEffectiveVolume: function () {
+        var volume = typeof this.bgmVolume === 'number' ? this.bgmVolume : 0.65;
+        return Math.max(0, Math.min(1, volume * this._getMasterAudioVolume()));
+    },
+
+    _updateBgmVolume: function () {
+        if (this._bgmId < 0) return;
+        try {
+            cc.audioEngine.setVolume(this._bgmId, this._getBgmEffectiveVolume());
+        } catch (e) {}
+    },
+
+    onGlobalAudioVolumeChanged: function () {
+        this._updateBgmVolume();
+    },
+
+    onGlobalPauseChanged: function (paused) {
+        if (this._bgmId < 0) return;
+        if (paused) {
+            try { cc.audioEngine.pause(this._bgmId); } catch (e) {}
+            this._bgmPausedByGlobalPause = true;
+            return;
+        }
+
+        if (this._bgmPausedByGlobalPause) {
+            this._updateBgmVolume();
+            try { cc.audioEngine.resume(this._bgmId); } catch (e) {}
+            this._bgmPausedByGlobalPause = false;
+        }
     },
 
     update: function (dt) {
         this._cameraShakeTimer = Math.max(0, (this._cameraShakeTimer || 0) - Math.max(0, dt || 0));
 
-        if (this._paused) {
-            this._stopAllActorMovement();
-            this._updateCameraFollow();
-            this._updateHud(0);
-            this._updatePauseOverlayPosition();
-            if (this._dialogueControl) this._dialogueControl.update(0);
-            if (this._notificationControl) this._notificationControl.update(0);
-            if (this._orderOpen) this._updateOrderOverlayPosition();
-            return;
-        }
+        this._recoverDialogueStateIfNeeded();
 
         if (!this._orderOpen && this._dialogueControl && this._dialogueControl.isOrderOpen()) {
             this._dialogueControl.closeOrder();
@@ -4356,7 +4593,6 @@ cc.Class({
             this._stopAllActorMovement();
             this._updateCameraFollow();
             this._updateHud(0);
-            this._updatePauseOverlayPosition();
             if (this._dialogueControl) this._dialogueControl.update(dt);
             if (this._notificationControl) this._notificationControl.update(dt);
             return;
@@ -4364,6 +4600,7 @@ cc.Class({
 
         this._updatePlayerMovement(dt);
         if (this._niuPaiControl) this._niuPaiControl.update(dt);
+        this._updateMainBlackDogSpawn(dt);
         if (this._blackDogControl) this._blackDogControl.update(dt);
         if (this._mcDonaldControl && !this._orderOpen) this._mcDonaldControl.update(dt);
         if (this._normieControl) {
@@ -4376,11 +4613,24 @@ cc.Class({
         this._updateDebugImmediateResult();
         this._updateCameraFollow();
         this._updateHud(dt);
-        this._updatePauseOverlayPosition();
         if (this._dialogueControl) this._dialogueControl.update(dt);
         if (this._notificationControl) this._notificationControl.update(dt);
         if (this._orderOpen) {
             this._updateOrderOverlayPosition();
+        }
+    },
+
+    _recoverDialogueStateIfNeeded: function () {
+        if (this._introDialogOpen &&
+            (!this._dialogueControl || !this._dialogueControl.isSimpleOpen())) {
+            cc.warn('[NiuPai] Recovered from stale intro dialogue state.');
+            this._resumeAfterDialogue();
+        }
+
+        if (this._orderOpen &&
+            (!this._dialogueControl || !this._dialogueControl.isOrderOpen())) {
+            cc.warn('[NiuPai] Recovered from stale order dialogue state.');
+            this._closeOrderDialog();
         }
     },
 

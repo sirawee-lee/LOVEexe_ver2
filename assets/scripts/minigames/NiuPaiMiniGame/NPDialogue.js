@@ -8,13 +8,14 @@ var DialogueType = {
 
 var DialogueContent = {};
 DialogueContent[DialogueType.IntroControls] = {
-    text: 'Controls\nWASD / Arrow Keys: Run\nShift: Walk\nE: Interact / Use item\nP: Pause\nGet the correct food and make it out safely! good luck!',
+    text: 'WASD / Arrow Keys: Run\nShift: Walk\nE: Interact / Use item\nGood Luck!',
     confirmText: '[E] Start',
 };
 DialogueContent[DialogueType.TunnelIntro] = {
     pages: [
-        'Tunnel intro dialogue placeholder 1.',
-        'Tunnel intro dialogue placeholder 2.',
+        'Oh my god where am I?\nIt\'s an exit doesn\'t it... What happened???',
+        'It\'s so dark, and kinda feels suffocating...',
+        'I need to find a way out of here.',
     ],
     confirmText: '[E] Continue',
     finalConfirmText: '[E] Continue',
@@ -96,6 +97,7 @@ var NPDialogue = cc.Class({
         this.onConfirm = onConfirm || null;
         this.pageIndex = 0;
         this._root.active = true;
+        this._setHudHidden(true);
         this._renderSimpleContent(content);
         this._layout();
         return true;
@@ -124,6 +126,7 @@ var NPDialogue = cc.Class({
         this.pageIndex = 0;
         if (this._root && this._root.isValid) this._root.active = false;
         if (this._orderRoot && this._orderRoot.isValid) this._orderRoot.active = false;
+        this._setHudHidden(false);
     },
 
     isOpen: function () {
@@ -158,6 +161,7 @@ var NPDialogue = cc.Class({
         this._ensureOrderRoot();
         this.activeType = 'order';
         this._orderRoot.active = true;
+        this._setHudHidden(true);
         this._renderOrder(state, selectedIndex || 0, heldItem);
         return true;
     },
@@ -165,6 +169,7 @@ var NPDialogue = cc.Class({
     closeOrder: function () {
         if (this.activeType === 'order') this.activeType = null;
         if (this._orderRoot && this._orderRoot.isValid) this._orderRoot.active = false;
+        this._setHudHidden(false);
     },
 
     update: function () {
@@ -173,59 +178,75 @@ var NPDialogue = cc.Class({
     },
 
     _ensureRoot: function () {
-        if (this._root && this._root.isValid) return;
+        if (this._root && this._root.isValid) {
+            this._ensureRootParent(this._root);
+            return;
+        }
 
         var root = new cc.Node('NPDialogueRoot');
         root.zIndex = 2400;
         root.active = false;
         this.node.addChild(root, 2400);
         this._root = root;
+        this._ensureRootParent(root);
 
         var bg = new cc.Node('DialoguePanel');
-        bg.addComponent(cc.Graphics);
         root.addChild(bg, 0);
         this._bg = bg;
 
-        this._textLabel = this._createLabel('DialogueText', '', 14, cc.Color.WHITE);
+        this._textLabel = this._createLabel('DialogueText', '', 16, cc.Color.BLACK);
         this._textLabel.getComponent(cc.Label).horizontalAlign = cc.Label.HorizontalAlign.LEFT;
         root.addChild(this._textLabel, 1);
 
-        this._confirmLabel = this._createLabel('ConfirmText', '', 11, cc.color(255, 235, 130));
+        this._confirmLabel = this._createLabel('ConfirmText', '', 16, cc.color(155, 145, 30));
         root.addChild(this._confirmLabel, 1);
     },
 
     _ensureOrderRoot: function () {
-        if (this._orderRoot && this._orderRoot.isValid) return;
+        if (this._orderRoot && this._orderRoot.isValid) {
+            this._ensureRootParent(this._orderRoot);
+            return;
+        }
 
         var root = new cc.Node('NPOrderDialogueRoot');
         root.zIndex = 2400;
         root.active = false;
         this.node.addChild(root, 2400);
         this._orderRoot = root;
+        this._ensureRootParent(root);
 
         this._orderDialogueBg = this._createPanelNode('DialoguePanel');
         root.addChild(this._orderDialogueBg, 0);
 
-        this._orderMenuBg = this._createPanelNode('ChoicePanel');
-        root.addChild(this._orderMenuBg, 1);
-
-        this._orderDialogueLabel = this._createLabel('DialogueText', '', 15, cc.Color.WHITE);
+        this._orderDialogueLabel = this._createLabel('DialogueText', '', 16, cc.Color.BLACK);
         root.addChild(this._orderDialogueLabel, 2);
 
-        this._orderHelpLabel = this._createLabel('OrderHelp', '[W/S] Select    [E] Confirm    [R] Back', 10, cc.color(210, 220, 255));
+        this._orderHelpLabel = this._createLabel('OrderHelp', '[W/S] Select    [E] Confirm    [R] Back', 16, cc.color(155, 145, 30));
         root.addChild(this._orderHelpLabel, 2);
 
+        this._orderChoiceButtons = [];
+        this._orderChoiceBgs = [];
         this._orderChoiceLabels = [];
         for (var i = 0; i < 4; i++) {
-            var label = this._createLabel('Choice' + i, '', 14, cc.Color.WHITE);
-            root.addChild(label, 3);
+            var button = new cc.Node('ChoiceButton' + i);
+            button.setAnchorPoint(0.5, 0.5);
+            root.addChild(button, 3);
+
+            var bg = this._createPanelNode('ChoiceButtonBg' + i);
+            button.addChild(bg, 0);
+
+            var label = this._createLabel('Choice' + i, '', 16, cc.Color.WHITE);
+            label.getComponent(cc.Label).horizontalAlign = cc.Label.HorizontalAlign.LEFT;
+            button.addChild(label, 1);
+
+            this._orderChoiceButtons.push(button);
+            this._orderChoiceBgs.push(bg);
             this._orderChoiceLabels.push(label);
         }
     },
 
     _createPanelNode: function (name) {
         var node = new cc.Node(name);
-        node.addComponent(cc.Graphics);
         return node;
     },
 
@@ -248,18 +269,16 @@ var NPDialogue = cc.Class({
         if (!this._root.active) return;
 
         var camera = this.game && this.game._camera;
-        var cameraPos = this._getCameraPosition();
-        this._root.setPosition(cameraPos);
-
+        var cameraUi = this._updateRootTransform(this._root);
         var zoom = camera ? (camera.zoomRatio || 1) : 1;
-        var viewW = cc.winSize.width / zoom;
-        var viewH = cc.winSize.height / zoom;
+        var viewW = cameraUi ? cc.winSize.width : cc.winSize.width / zoom;
+        var viewH = cameraUi ? cc.winSize.height : cc.winSize.height / zoom;
         var width = Math.min(Math.max(220, viewW - 80), this.game ? (this.game.dialoguePanelWidth || 420) : 420);
         var height = this.game ? (this.game.dialoguePanelHeight || 150) : 150;
         var y = Math.min(viewH / 2 - height / 2 - 28, 86);
 
-        this._drawPanel(this._bg, width, height);
         this._bg.setPosition(0, y);
+        this._drawPanel(this._bg, width, height, null, null, this._getDialoguePanelSprite());
 
         this._textLabel.setContentSize(width - 34, height - 48);
         this._textLabel.setPosition(0, y + 12);
@@ -268,19 +287,21 @@ var NPDialogue = cc.Class({
     },
 
     _renderOrder: function (state, selectedIndex, heldItem) {
-        this._layoutOrder();
-
+        this._orderSelectedIndex = selectedIndex || 0;
         var held = heldItem ? 'Holding: ' + this._formatItemName(heldItem) + '\n' : '';
         this._orderDialogueLabel.getComponent(cc.Label).string = held + state.text;
 
         for (var i = 0; i < this._orderChoiceLabels.length; i++) {
             var node = this._orderChoiceLabels[i];
+            var button = this._orderChoiceButtons[i];
             var choice = state.choices[i];
             if (!choice) {
+                if (button) button.active = false;
                 node.active = false;
                 continue;
             }
 
+            if (button) button.active = true;
             node.active = true;
             node.getComponent(cc.Label).string =
                 (i === selectedIndex ? '> ' : '  ') + (i + 1) + '. ' + choice.label;
@@ -288,6 +309,8 @@ var NPDialogue = cc.Class({
                 ? cc.color(255, 235, 80)
                 : cc.Color.WHITE;
         }
+
+        this._layoutOrder();
     },
 
     _renderSimpleContent: function (content) {
@@ -310,30 +333,51 @@ var NPDialogue = cc.Class({
         if (!this._orderRoot || !this._orderRoot.isValid || !this._orderRoot.active) return;
 
         var camera = this.game && this.game._camera;
-        var cameraPos = this._getCameraPosition();
-        this._orderRoot.setPosition(cameraPos);
-
+        var cameraUi = this._updateRootTransform(this._orderRoot);
         var zoom = camera ? (camera.zoomRatio || 1) : 1;
-        var viewW = cc.winSize.width / zoom;
-        var viewH = cc.winSize.height / zoom;
+        var viewW = cameraUi ? cc.winSize.width : cc.winSize.width / zoom;
+        var dialogueW = viewW - 80;
+        var viewH = cameraUi ? cc.winSize.height : cc.winSize.height / zoom;
         var dialogH = this.game ? this.game.orderDialogueHeight : 100;
-        var dialogY = -viewH / 2 + dialogH / 2;
-        var menuW = this.game ? this.game.orderMenuWidth : 300;
-        var menuH = this.game ? this.game.orderMenuHeight : 125;
+        var dialogY = -viewH / 2 + dialogH / 2 + 10;
+        var buttonW = this.game ? (this.game.orderButtonWidth || 260) : 260;
+        var buttonH = this.game ? (this.game.orderButtonHeight || 26) : 26;
+        var buttonGap = this.game ? (this.game.orderButtonGap || 4) : 4;
         var lineH = this.game ? this.game.orderChoiceLineHeight : 24;
 
-        this._drawPanel(this._orderDialogueBg, viewW, dialogH, cc.color(20, 18, 45, 210), cc.color(255, 70, 70, 230));
         this._orderDialogueBg.setPosition(0, dialogY);
-
-        this._drawPanel(this._orderMenuBg, menuW, menuH, cc.color(30, 64, 150, 200), cc.color(90, 140, 255, 230));
-        this._orderMenuBg.setPosition(0, 22);
+        this._drawPanel(this._orderDialogueBg, dialogueW, dialogH, cc.color(20, 18, 45, 210), cc.color(255, 70, 70, 230), this._getDialoguePanelSprite());
 
         this._orderDialogueLabel.setPosition(0, dialogY + 18);
-        this._orderHelpLabel.setPosition(viewW / 2 - 175, dialogY - dialogH / 2 + 22);
+        this._orderHelpLabel.setPosition(dialogueW / 2 - 175, dialogY - dialogH / 2 + 22);
 
-        var startY = 58;
+        var activeCount = 0;
         for (var i = 0; i < this._orderChoiceLabels.length; i++) {
-            this._orderChoiceLabels[i].setPosition(0, startY - (i + 1) * lineH);
+            if (this._orderChoiceButtons[i] && this._orderChoiceButtons[i].active) activeCount++;
+        }
+
+        var totalH = Math.max(1, activeCount) * buttonH + Math.max(0, activeCount - 1) * buttonGap;
+        var startY = 36 + totalH / 2 - buttonH / 2;
+        var visibleIndex = 0;
+        for (var j = 0; j < this._orderChoiceLabels.length; j++) {
+            var button = this._orderChoiceButtons[j];
+            var label = this._orderChoiceLabels[j];
+            if (!button || !button.active) continue;
+
+            var y = startY - visibleIndex * (buttonH + buttonGap);
+            button.setContentSize(buttonW, buttonH);
+            button.setPosition(0, y);
+            this._drawPanel(
+                this._orderChoiceBgs[j],
+                buttonW,
+                buttonH,
+                j === this._orderSelectedIndex ? cc.color(58, 70, 165, 230) : cc.color(35, 50, 120, 215),
+                j === this._orderSelectedIndex ? cc.color(255, 235, 80, 245) : cc.color(95, 130, 225, 230),
+                this._getDialogueButtonSprite()
+            );
+            label.setContentSize(buttonW - 26, Math.max(lineH, buttonH));
+            label.setPosition(0, 0);
+            visibleIndex++;
         }
     },
 
@@ -346,8 +390,54 @@ var NPDialogue = cc.Class({
         return camera.node.getPosition();
     },
 
-    _drawPanel: function (node, width, height, fillColor, strokeColor) {
+    _ensureRootParent: function (root) {
+        if (!root || !root.isValid) return;
+        var camera = this.game && this.game._camera;
+        if (!camera || !camera.node || !camera.node.isValid) return;
+        if (root.parent === camera.node) return;
+
+        root.parent = camera.node;
+        root.zIndex = 2400;
+        root.setPosition(0, 0);
+    },
+
+    _updateRootTransform: function (root) {
+        if (!root || !root.isValid) return false;
+        this._ensureRootParent(root);
+
+        var camera = this.game && this.game._camera;
+        if (camera && camera.node && root.parent === camera.node) {
+            var zoom = camera.zoomRatio || 1;
+            root.setPosition(0, 0);
+            root.setScale(1 / zoom);
+            return true;
+        }
+
+        root.setPosition(this._getCameraPosition());
+        root.setScale(1, 1);
+        return false;
+    },
+
+    _drawPanel: function (node, width, height, fillColor, strokeColor, spriteFrame) {
+        if (!node || !node.isValid) return;
+
+        node.setContentSize(width, height);
+
+        var sprite = node.getComponent(cc.Sprite);
         var gfx = node.getComponent(cc.Graphics);
+        if (spriteFrame) {
+            if (!sprite) sprite = node.addComponent(cc.Sprite);
+            sprite.spriteFrame = spriteFrame;
+            sprite.type = cc.Sprite.Type.SLICED;
+            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            node.setContentSize(width, height);
+            if (gfx) gfx.clear();
+            this._drawGuiShadow(node, width, height);
+            return;
+        }
+
+        if (sprite) sprite.spriteFrame = null;
+        if (!gfx) gfx = node.addComponent(cc.Graphics);
         gfx.clear();
         gfx.fillColor = fillColor || cc.color(25, 48, 150, 220);
         gfx.strokeColor = strokeColor || cc.color(70, 130, 255, 245);
@@ -355,6 +445,58 @@ var NPDialogue = cc.Class({
         gfx.rect(-width / 2, -height / 2, width, height);
         gfx.fill();
         gfx.stroke();
+        this._drawGuiShadow(node, width, height);
+    },
+
+    _drawGuiShadow: function (node, width, height) {
+        if (!node || !node.isValid) return;
+
+        var game = this.game || {};
+        var oldChildShadow = node.getChildByName('GuiDropShadow');
+        if (oldChildShadow && oldChildShadow.isValid) oldChildShadow.destroy();
+
+        var shadowName = node.name + '_GuiDropShadow';
+        var shadow = node.parent ? node.parent.getChildByName(shadowName) : null;
+        if (!game.guiShadowSprite) {
+            if (shadow && shadow.isValid) shadow.active = false;
+            return;
+        }
+
+        if (!node.parent) return;
+        if (!shadow || !shadow.isValid) {
+            shadow = new cc.Node(shadowName);
+            shadow.setAnchorPoint(0.5, 0.5);
+            node.parent.addChild(shadow, (node.zIndex || 0) - 1);
+            var sprite = shadow.addComponent(cc.Sprite);
+            sprite.type = cc.Sprite.Type.SLICED;
+            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        }
+
+        shadow.zIndex = (node.zIndex || 0) - 1;
+        var shadowSprite = shadow.getComponent(cc.Sprite);
+        shadowSprite.spriteFrame = game.guiShadowSprite;
+        shadowSprite.type = cc.Sprite.Type.SLICED;
+        shadowSprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        shadow.setContentSize(width, height);
+        shadow.setPosition(
+            node.x + (typeof game.guiShadowOffsetX === 'number' ? game.guiShadowOffsetX : -3),
+            node.y + (typeof game.guiShadowOffsetY === 'number' ? game.guiShadowOffsetY : -3)
+        );
+        shadow.active = true;
+    },
+
+    _getDialoguePanelSprite: function () {
+        return this.game ? (this.game.dialoguePanelSprite || null) : null;
+    },
+
+    _getDialogueButtonSprite: function () {
+        return this.game ? (this.game.dialogueButtonSprite || null) : null;
+    },
+
+    _setHudHidden: function (hidden) {
+        if (this.game && this.game._setHudHiddenForDialogue) {
+            this.game._setHudHiddenForDialogue(hidden);
+        }
     },
 
     _formatItemName: function (item) {
