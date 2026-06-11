@@ -44,7 +44,7 @@ NotificationContent[NotificationType.WalletSeen] = {
 };
 NotificationContent[NotificationType.FirstWalletPickup] = {
     id: 'first_wallet_pickup',
-    text: "Hmm... Hopefully somebody didn't notice >:)",
+    text: "Hmm... \nHopefully somebody didn't notice >:)",
 };
 NotificationContent[NotificationType.NiuPaiHurt] = {
     id: 'niupai_hurt',
@@ -158,14 +158,23 @@ var NPNotification = cc.Class({
         node.setAnchorPoint(0.5, 0.5);
         node.setContentSize(width, height);
         this._root.addChild(node, 0);
+        this._drawGuiShadow(node, width, height);
 
-        var gfx = node.addComponent(cc.Graphics);
-        gfx.fillColor = cc.color(35, 70, 190, 205);
-        gfx.strokeColor = cc.color(70, 125, 255, 240);
-        gfx.lineWidth = 2;
-        gfx.rect(-width / 2, -height / 2, width, height);
-        gfx.fill();
-        gfx.stroke();
+        if (game.notificationFrameSprite) {
+            var bgSprite = node.addComponent(cc.Sprite);
+            bgSprite.spriteFrame = game.notificationFrameSprite;
+            bgSprite.type = cc.Sprite.Type.SLICED;
+            bgSprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            node.setContentSize(width, height);
+        } else {
+            var gfx = node.addComponent(cc.Graphics);
+            gfx.fillColor = cc.color(35, 70, 190, 205);
+            gfx.strokeColor = cc.color(70, 125, 255, 240);
+            gfx.lineWidth = 2;
+            gfx.rect(-width / 2, -height / 2, width, height);
+            gfx.fill();
+            gfx.stroke();
+        }
 
         var labelNode = new cc.Node('Text');
         labelNode.setAnchorPoint(0.5, 0.5);
@@ -181,7 +190,7 @@ var NPNotification = cc.Class({
         label.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
         label.verticalAlign = cc.Label.VerticalAlign.CENTER;
         label.overflow = cc.Label.Overflow.SHRINK;
-        labelNode.color = cc.color(240, 245, 255);
+        labelNode.color = cc.color(13, 0, 0);
 
         return {
             id: id || ('notification_' + Date.now() + '_' + Math.random()),
@@ -189,6 +198,43 @@ var NPNotification = cc.Class({
             timer: duration,
             persistent: !!persistent,
         };
+    },
+
+    _drawGuiShadow: function (node, width, height) {
+        if (!node || !node.isValid) return;
+
+        var game = this.game || {};
+        var oldChildShadow = node.getChildByName('GuiDropShadow');
+        if (oldChildShadow && oldChildShadow.isValid) oldChildShadow.destroy();
+
+        var shadowName = node.name + '_' + (node.uuid || node._id || '') + '_GuiDropShadow';
+        var shadow = node.parent ? node.parent.getChildByName(shadowName) : null;
+        if (!game.guiShadowSprite) {
+            if (shadow && shadow.isValid) shadow.active = false;
+            return;
+        }
+
+        if (!node.parent) return;
+        if (!shadow || !shadow.isValid) {
+            shadow = new cc.Node(shadowName);
+            shadow.setAnchorPoint(0.5, 0.5);
+            node.parent.addChild(shadow, (node.zIndex || 0) - 1);
+            var sprite = shadow.addComponent(cc.Sprite);
+            sprite.type = cc.Sprite.Type.SLICED;
+            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        }
+
+        shadow.zIndex = (node.zIndex || 0) - 1;
+        var shadowSprite = shadow.getComponent(cc.Sprite);
+        shadowSprite.spriteFrame = game.guiShadowSprite;
+        shadowSprite.type = cc.Sprite.Type.SLICED;
+        shadowSprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        shadow.setContentSize(width, height);
+        shadow.setPosition(
+            node.x + (typeof game.guiShadowOffsetX === 'number' ? game.guiShadowOffsetX : -3),
+            node.y + (typeof game.guiShadowOffsetY === 'number' ? game.guiShadowOffsetY : -3)
+        );
+        shadow.active = true;
     },
 
     _layout: function () {
@@ -207,22 +253,47 @@ var NPNotification = cc.Class({
             var entry = this.entries[i];
             if (!entry || !entry.node || !entry.node.isValid) continue;
             entry.node.setPosition(0, topY - height / 2 - stackIndex * (height + gap));
+            this._drawGuiShadow(entry.node, Math.max(80, game.notificationWidth || 360), height);
         }
     },
 
     _ensureRoot: function () {
-        if (this._root && this._root.isValid) return;
+        if (this._root && this._root.isValid) {
+            this._ensureRootParent();
+            return;
+        }
         var root = new cc.Node('NPNotificationRoot');
         root.zIndex = 2600;
         root.active = false;
         this.node.addChild(root, 2600);
         this._root = root;
+        this._ensureRootParent();
         this._updateRootPosition();
     },
 
     _updateRootPosition: function () {
         if (!this._root || !this._root.isValid) return;
+        this._ensureRootParent();
+        var camera = this.game && this.game._camera;
+        if (camera && camera.node && this._root.parent === camera.node) {
+            var zoom = camera.zoomRatio || 1;
+            this._root.setPosition(0, 0);
+            this._root.setScale(1 / zoom);
+            return;
+        }
         this._root.setPosition(this._getCameraPosition());
+        this._root.setScale(1, 1);
+    },
+
+    _ensureRootParent: function () {
+        if (!this._root || !this._root.isValid) return;
+        var camera = this.game && this.game._camera;
+        if (!camera || !camera.node || !camera.node.isValid) return;
+        if (this._root.parent === camera.node) return;
+
+        this._root.parent = camera.node;
+        this._root.zIndex = 2600;
+        this._root.setPosition(0, 0);
     },
 
     _getCameraPosition: function () {
@@ -237,8 +308,9 @@ var NPNotification = cc.Class({
     _getTopY: function () {
         var game = this.game || {};
         var camera = game._camera;
+        var cameraUi = camera && camera.node && this._root && this._root.parent === camera.node;
         var zoom = camera ? (camera.zoomRatio || 1) : 1;
-        var viewH = cc.winSize.height / zoom;
+        var viewH = cameraUi ? cc.winSize.height : cc.winSize.height / zoom;
         return viewH / 2 - Math.max(0, game.notificationTopOffset || 28);
     },
 
@@ -247,6 +319,11 @@ var NPNotification = cc.Class({
     },
 
     _destroyEntry: function (entry) {
+        if (entry && entry.node && entry.node.parent) {
+            var shadowName = entry.node.name + '_' + (entry.node.uuid || entry.node._id || '') + '_GuiDropShadow';
+            var shadow = entry.node.parent.getChildByName(shadowName);
+            if (shadow && shadow.isValid) shadow.destroy();
+        }
         if (entry && entry.node && entry.node.isValid) entry.node.destroy();
     },
 });

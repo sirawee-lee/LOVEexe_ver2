@@ -383,6 +383,88 @@ cc.Class({
         }
     },
 
+    // ── Niu Pai / dog-rescue overworld helpers (used by GameController's XCB cutscene) ──
+    _showNpc: function (id) {
+        for (var i = 0; i < this._npcs.length; i++) {
+            if (this._npcs[i].npcId === id && this._npcs[i].node && this._npcs[i].node.isValid) {
+                this._npcs[i].node.active = true;
+                return;
+            }
+        }
+    },
+
+    setNiuPaiCompanionJoined: function (joined) {
+        StoryState.dogJoined = !!joined;
+        if (joined) {
+            this._ensureDogJoinedAtPlayerSide();
+        } else {
+            if (this._dogNode) this._dogNode.active = false;
+            if (this._dogAnim) this._dogAnim.setMoving(false);
+            this._showNpc('niupai');
+        }
+        this._activeNpc = null;
+        this._activeZone = null;
+    },
+
+    teleportPlayerNearNpc: function (npcId, offset) {
+        var npc = this._findNpc(npcId);
+        if (!npc || !npc.node || !npc.node.isValid) {
+            cc.warn('[MainGame] Cannot teleport near missing NPC: ' + npcId);
+            return false;
+        }
+
+        offset = offset || cc.v2(-0, 80);
+        this._setPlayerPosition(npc.node.x + offset.x, npc.node.y + offset.y);
+
+        if (StoryState.dogJoined) {
+            this._ensureDogJoinedAtPlayerSide();
+        }
+
+        this._syncCameraToPlayer();
+        this._activeNpc = null;
+        this._activeZone = null;
+        return true;
+    },
+
+    _findNpc: function (npcId) {
+        if (!this._npcs) return null;
+        for (var i = 0; i < this._npcs.length; i++) {
+            if (this._npcs[i].npcId === npcId) return this._npcs[i];
+        }
+        return null;
+    },
+
+    _setPlayerPosition: function (x, y) {
+        var hW = this._mapW / 2 - 20;
+        var hH = this._mapH / 2 - 20;
+        this._px = Math.max(-hW, Math.min(hW, x));
+        this._py = Math.max(-hH, Math.min(hH, y));
+        if (this._playerNode) this._playerNode.setPosition(this._px, this._py);
+        if (this._anim) this._anim.setMoving(false);
+    },
+
+    _ensureDogJoinedAtPlayerSide: function () {
+        if (!this._dogNode) return;
+        this._dogNode.active = true;
+        this._hideNpc('niupai');
+        this._dogX = this._px - 32;
+        this._dogY = this._py - 4;
+        this._dogNode.setPosition(this._dogX, this._dogY);
+        if (this._dogAnim) this._dogAnim.setMoving(false);
+    },
+
+    _syncCameraToPlayer: function () {
+        if (!this._world) return;
+        var vis = cc.view.getVisibleSize();
+        var vHW = vis.width / 2;
+        var vHH = vis.height / 2;
+        var sHW = this._mapW / 2 * ZOOM;
+        var sHH = this._mapH / 2 * ZOOM;
+        var worldX = sHW <= vHW ? 0 : Math.max(vHW - sHW, Math.min(sHW - vHW, -this._px * ZOOM));
+        var worldY = sHH <= vHH ? 0 : Math.max(vHH - sHH, Math.min(sHH - vHH, -this._py * ZOOM));
+        this._world.setPosition(worldX, worldY);
+    },
+
     _onKeyDown: function (e) {
         // Ignore keys while MainGame is hidden (e.g. the Osu node-toggle minigame is on
         // screen) — the global cc.systemEvent listener stays subscribed otherwise, so
