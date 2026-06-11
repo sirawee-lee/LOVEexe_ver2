@@ -102,9 +102,50 @@ var EndingScreen = {
                 var id = cc.audioEngine.playEffect(clip, false);
                 try { cc.audioEngine.setVolume(id, 0.55); } catch (e) {}
             };
-            yip();   // one right away
-            cc.tween(node).delay(3).call(yip).union().repeatForever().start();
+            // bark 3 times, well spaced (the clip is ~6s), then stop — no endless barking
+            yip();
+            cc.tween(node).delay(9).call(yip).delay(9).call(yip).start();
         });
+    },
+
+    // Big white "THANKS FOR PLAYING!" typed across the centre of the ending art,
+    // finishing in ~8s. A dark drop-shadow copy keeps it readable over any artwork.
+    _typeThanks: function (str) {
+        var root = this._overlay;
+        if (!root || !cc.isValid(root)) return;
+        var W = cc.view.getVisibleSize().width;
+
+        var mk = function (color, dx, dy, z) {
+            var n = new cc.Node('thanks');
+            n.parent = root;
+            n.zIndex = z;
+            n.setPosition(dx, 30 + dy);
+            var l = n.addComponent(cc.Label);
+            l.fontSize = 58; l.lineHeight = 70;
+            l.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+            l.overflow = cc.Label.Overflow.RESIZE_HEIGHT;
+            l.enableWrapText = true;
+            n.width = W - 120;
+            n.color = color;
+            PixelFont.apply(l);
+            return l;
+        };
+        var shadow = mk(cc.color(0, 0, 0), 4, -4, 249999);
+        var main   = mk(cc.color(255, 255, 255), 0, 0, 250000);
+
+        var interval = 8 / Math.max(1, str.length);
+        shadow.string = ''; main.string = '';
+        var t = cc.tween(main.node);
+        for (var i = 1; i <= str.length; i++) {
+            (function (n) {
+                t = t.delay(interval).call(function () {
+                    var s = str.substr(0, n);
+                    if (cc.isValid(main.node)) main.string = s;
+                    if (cc.isValid(shadow.node)) shadow.string = s;
+                });
+            })(i);
+        }
+        t.start();
     },
 
     // ── the girl / dog choice (black screen) ──────────────
@@ -160,11 +201,16 @@ var EndingScreen = {
         if (route === 'niupai') {
             ParticleFX.niupaiEnding(this._overlay, vs.width, vs.height);   // 🦴 bones + 💗 hearts
             this._playBgm('bgm_niupai');                                   // gentle ukulele bed
-            this._startBarkRhythm();                                       // 🐶 puppy yips every ~3s
+            this._startBarkRhythm();                                       // 🐶 3 spaced puppy yips, then quiet
         } else {
             ParticleFX.sakura(this._overlay, vs.width, vs.height);         // 🌸 cute sakura (happy ending)
             this._playBgm('bgm_romance');                                  // romantic true-love track
         }
+
+        // big white "THANKS FOR PLAYING!" typed across the centre (~8s)
+        this._typeThanks(route === 'niupai'
+            ? 'THANKS FOR PLAYING!  (EASTER EGG!)'
+            : 'THANKS FOR PLAYING!');
     },
 
     // ── leaderboard screen (Back returns to caller) ───────
