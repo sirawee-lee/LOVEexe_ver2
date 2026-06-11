@@ -151,7 +151,7 @@ var EndingScreen = {
     // ── the girl / dog choice (black screen) ──────────────
     _showChoice: function () {
         var self = this;
-        this._playBgm('bgm_ending', true);   // celebratory "YOU DID IT!" music
+        this._playBgm('bgm_levelclear', true);   // upbeat level-clear jingle on "YOU DID IT!"
         var root = this._root(COL_BLACK);
         var vs = cc.view.getVisibleSize();
         var H = vs.height;
