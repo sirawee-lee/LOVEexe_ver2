@@ -31,6 +31,9 @@ var StoryState = {
     // ── ending routing (read by EndingScreen) ──
     endingRoute: null,            // 'true_love' | 'niupai' — which finale the player chose
 
+    // ── Hero Mode — chosen on the title screen, persisted: no heart loss, not ranked ──
+    heroMode: (function () { try { return cc.sys.localStorage.getItem('loveexe_hero_mode') === '1'; } catch (e) { return false; } })(),
+
     reset: function () {
         this.affinity        = 0;
         this.completed       = { father: false, professor: false, niupai: false };
@@ -48,6 +51,14 @@ var StoryState = {
         this.lastFailGame    = null;
         this.scores          = {};
         this.endingRoute     = null;
+        // heroMode is a persisted SETTING, not run progress — re-read it (don't wipe)
+        try { this.heroMode = cc.sys.localStorage.getItem('loveexe_hero_mode') === '1'; } catch (e) { this.heroMode = false; }
+    },
+
+    // Toggle Hero Mode and persist it across reloads.
+    setHeroMode: function (on) {
+        this.heroMode = !!on;
+        try { cc.sys.localStorage.setItem('loveexe_hero_mode', on ? '1' : '0'); } catch (e) {}
     },
 
     addAffinity: function (delta) {
@@ -63,6 +74,7 @@ var StoryState = {
     // Returns true if that was the last heart, so the caller can route to the
     // game-over screen. Never drops below 0; ignores extra fails once dead.
     recordFail: function (game) {
+        if (this.heroMode) return false;   // HERO MODE: hearts never drop, never game-over
         if (this.gameOver) return true;
         this.lives = Math.max(0, this.lives - 1);
         this.lastFailGame = game || null;

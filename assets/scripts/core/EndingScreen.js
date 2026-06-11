@@ -102,17 +102,17 @@ var EndingScreen = {
         var image = route === 'niupai' ? 'ending_niupai_1' : 'ending_true_love_1';
         var title = route === 'niupai' ? 'NIU PAI ENDING' : 'TRUE LOVE ENDING';
 
-        // record this winning run on the leaderboard exactly once
+        // record this winning run on the leaderboard exactly once — never in Hero Mode
         if (!this._recorded) {
             this._recorded = true;
-            this._addBoard(StoryState.totalScore(), route);
+            if (!StoryState.heroMode) this._addBoard(StoryState.totalScore(), route);
         }
 
         this._imageScreen({
             image: image,
             fallbackColor: route === 'niupai' ? cc.color(20, 16, 30) : cc.color(40, 16, 26),
             fallbackTitle: title,
-            subtitle: 'Final score   ' + StoryState.totalScore(),
+            subtitle: StoryState.heroMode ? 'HERO MODE — not ranked' : ('Final score   ' + StoryState.totalScore()),
             buttons: [
                 { text: 'Leaderboard', color: COL_PINK, hi: COL_PINK_HI, onClick: function () { self._showLeaderboard(function () { self._showFinale(route); }); } },
                 { text: 'Credits',     color: COL_GREY, hi: COL_GREY_HI, onClick: function () { self._showCredits(function () { self._showFinale(route); }); } },

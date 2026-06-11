@@ -17,6 +17,10 @@
 // MainGame reads all children of the InteractZones node at startup. The player
 // can press [E] / [Space] while standing inside the rectangle to enter.
 
+// Master switch for the gold interact-zone debug overlay (box + label).
+// Keep false for builds; flip to true while editing to see the zones again.
+var SHOW_DEBUG = false;
+
 cc.Class({
     extends: cc.Component,
 
@@ -36,7 +40,7 @@ cc.Class({
     },
 
     onLoad: function () {
-        if (!this.debugVisible) return;
+        if (!SHOW_DEBUG || !this.debugVisible) return;
 
         // Gold semi-transparent box so the zone is visible at runtime.
         // abs() so a stray negative Size from editor dragging still draws right.

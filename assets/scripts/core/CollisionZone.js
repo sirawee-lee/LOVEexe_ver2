@@ -20,6 +20,10 @@
 // MainGame reads all children of the Colliders node at startup: a node with a
 // Polygon Collider is treated as a polygon, otherwise as a rectangle.
 
+// Master switch for the collision-zone debug overlays (red/blue boxes + name labels).
+// Keep false for builds; flip to true while editing to see the zones again.
+var SHOW_DEBUG = false;
+
 cc.Class({
     extends: cc.Component,
 
@@ -31,7 +35,7 @@ cc.Class({
     },
 
     onLoad: function () {
-        if (!this.debugVisible) return;
+        if (!SHOW_DEBUG || !this.debugVisible) return;
 
         var gfx  = this.node.addComponent(cc.Graphics);
         var poly = this.node.getComponent(cc.PolygonCollider);

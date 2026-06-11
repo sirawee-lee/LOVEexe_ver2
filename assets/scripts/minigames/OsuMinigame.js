@@ -38,8 +38,8 @@ cc.Class({
             var ln  = new cc.Node('NL' + i);
             var lb  = ln.addComponent(cc.Label);
             lb.string           = '';
-            lb.fontSize         = 20;
-            lb.lineHeight       = 22;
+            lb.fontSize         = 30;
+            lb.lineHeight       = 32;
             lb.horizontalAlign  = cc.Label.HorizontalAlign.CENTER;
             lb.verticalAlign    = cc.Label.VerticalAlign.CENTER;
             PixelFont.apply(lb);
@@ -49,18 +49,23 @@ cc.Class({
             self._numLabels.push(ln);
         }
 
-        // HUD labels (CC Label nodes, always rendered on top)
-        self._titleNode = self._mkLabel('HEART CPR ♥', cc.v2(0, self._H / 2 - 18), 14, cc.color(255, 105, 180));
-        self._scoreNode = self._mkLabel('0', cc.v2(self._W / 2 - 60, self._H / 2 - 20), 16, cc.color(255, 105, 180));
-        self._statsNode = self._mkLabel('', cc.v2(-self._W / 2 + 10, self._H / 2 - 20), 11, cc.color(180, 180, 180));
-        self._hintNode  = self._mkLabel('[CLICK circle when ring = edge]  [SPACE]',
-                            cc.v2(0, -self._H / 2 + 10), 10, cc.color(255, 255, 255, 45));
+        // HUD labels — created once, then pinned to the visible edges by _layoutHUD()
+        self._titleNode = self._mkLabel('HEART CPR ♥', cc.v2(0, 0), 26, cc.color(255, 105, 180), 'center');
+        self._scoreNode = self._mkLabel('0',           cc.v2(0, 0), 30, cc.color(255, 105, 180), 'right');
+        self._statsNode = self._mkLabel('',            cc.v2(0, 0), 20, cc.color(180, 180, 180), 'left');
+        self._hintNode  = self._mkLabel('[CLICK circle when ring = edge]   [SPACE]',
+                            cc.v2(0, 0), 18, cc.color(255, 255, 255, 90), 'center');
 
-        // Floating judge text
-        self._judgeNode         = self._mkLabel('', cc.v2(0, 0), 20, cc.Color.WHITE);
+        // Floating judge text — center-anchored, floats over the notes
+        self._judgeNode         = self._mkLabel('', cc.v2(0, 0), 32, cc.Color.WHITE, 'center');
+        self._judgeNode.anchorY = 0.5;   // override: judge floats around note positions
         self._judgeNode.opacity = 0;
         self._jTimer            = 0;
         self._jX = 0; self._jY = 0;
+
+        // Pin the corner labels to the TRUE visible edges + track size for re-layout
+        self._lastVW = 0; self._lastVH = 0;
+        self._layoutHUD();
 
         // Mouse tracking
         self._mouseX = 0;
@@ -89,18 +94,35 @@ cc.Class({
     },
 
     // ── Helper: make a cc.Label child node ────────────────────────
-    _mkLabel: function (str, pos, size, color) {
+    _mkLabel: function (str, pos, size, color, align) {
         var n = new cc.Node();
         var l = n.addComponent(cc.Label);
         l.string           = str;
         l.fontSize         = size;
-        l.lineHeight       = size + 2;
-        l.horizontalAlign  = cc.Label.HorizontalAlign.CENTER;
+        l.lineHeight       = size + 4;
+        l.horizontalAlign  = (align === 'left')  ? cc.Label.HorizontalAlign.LEFT
+                           : (align === 'right') ? cc.Label.HorizontalAlign.RIGHT
+                           :                       cc.Label.HorizontalAlign.CENTER;
         PixelFont.apply(l);
         n.color = color || cc.Color.WHITE;
+        // anchor so the pinned X is the true text edge (corner labels never spill off-screen)
+        n.anchorX = (align === 'left') ? 0 : (align === 'right') ? 1 : 0.5;
+        n.anchorY = 1;   // top-anchored; corner labels sit just below the top edge
         n.setPosition(pos);
         this.node.addChild(n, 3);
         return n;
+    },
+
+    // ── Pin the HUD labels to the real visible edges (never clip off-screen) ──
+    _layoutHUD: function () {
+        var vs = cc.view.getVisibleSize();
+        var halfW = (vs && vs.width  ? vs.width  : this._W) / 2;
+        var halfH = (vs && vs.height ? vs.height : this._H) / 2;
+        var M = 22;
+        if (this._titleNode) this._titleNode.setPosition(0, halfH - M);             // top-center
+        if (this._scoreNode) this._scoreNode.setPosition(halfW - M, halfH - M);     // top-right
+        if (this._statsNode) this._statsNode.setPosition(-halfW + M, halfH - M);    // top-left
+        if (this._hintNode)  this._hintNode.setPosition(0, -halfH + M + 26);        // bottom-center
     },
 
     // ── Public API ────────────────────────────────────────────────
@@ -294,6 +316,14 @@ cc.Class({
     // ── Update / Render (runs every frame via CC's engine) ────────
     update: function (_dt) {
         var self = this;
+        // Re-pin the HUD to the true visible edges on the first frame (getVisibleSize
+        // can over-report right after the node toggle) and on any window resize.
+        var vs = cc.view.getVisibleSize();
+        if (vs && (vs.width !== self._lastVW || vs.height !== self._lastVH)) {
+            self._lastVW = vs.width; self._lastVH = vs.height;
+            self._W = vs.width; self._H = vs.height;   // keep the playfield chrome in sync with the HUD
+            self._layoutHUD();
+        }
         var gfx  = self._gfx;
         var W = self._W, H = self._H;
         var now = performance.now();

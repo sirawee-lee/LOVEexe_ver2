@@ -17,6 +17,9 @@
 
 var FACING = cc.Enum({ down: 0, up: 1, left: 2, right: 3 });
 
+// Master switch for the cyan talk-zone debug overlay. Keep false for builds.
+var SHOW_DEBUG = false;
+
 cc.Class({
     extends: cc.Component,
 
@@ -45,7 +48,7 @@ cc.Class({
         anim.setMoving(false);
         self._anim = anim;
 
-        if (self.showZone) self._drawZone();
+        if (SHOW_DEBUG && self.showZone) self._drawZone();
     },
 
     _drawZone: function () {

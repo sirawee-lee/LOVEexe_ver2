@@ -171,11 +171,27 @@ cc.Class({
         var pNode = new cc.Node('Player');
         pNode.addComponent(cc.Sprite);
         pNode.setContentSize(self.playerFrameW, self.playerFrameH);
-        pNode.setPosition(0, 0);
         world.addChild(pNode, 2);
         self._playerNode = pNode;
-        self._px = 0;
-        self._py = 0;
+
+        // ── Spawn just below a target NPC so the opening reads as a conversation ──
+        // Target = the NPC whose minigame just finished (StoryState.lastResult.key);
+        // otherwise Mei (fresh start, or returning after the boss). The spawn sits
+        // BELOW the NPC's trigger by a margin so the walk-up auto-trigger does NOT
+        // fire on load — the scripted intro/post dialogue plays regardless of position.
+        var spawnTargetId = (StoryState.lastResult && StoryState.lastResult.key)
+            ? StoryState.lastResult.key : 'mei';
+        self._px = 0; self._py = 0; self._faceNpc = false;
+        for (var si = 0; si < self._npcs.length; si++) {
+            var sn = self._npcs[si];
+            if (sn.npcId === spawnTargetId && sn.node && sn.node.isValid) {
+                self._px = sn.node.x;
+                self._py = sn.node.y - (Math.abs(sn.h) / 2 + 28);   // clear of the trigger's bottom edge
+                self._faceNpc = true;
+                break;
+            }
+        }
+        pNode.setPosition(self._px, self._py);
 
         // Attach animator and give it the spritesheet
         var anim = pNode.addComponent('PlayerAnimator');
@@ -184,6 +200,7 @@ cc.Class({
         anim.frameHeight  = self.playerFrameH;
         if (self.playerSheet) anim._buildFrames();
         self._anim = anim;
+        if (self._faceNpc && self._anim) self._anim.setDirection('up');   // face the NPC we spawned beside
 
         // ── Dog companion (Niu Pai) — walks beside the player ──
         // Attach to World BEFORE adding PlayerAnimator, so its onLoad runs
@@ -202,7 +219,7 @@ cc.Class({
             dAnim.spritesheet = self.dogSheet;
             dAnim.frameWidth  = self.dogFrameW;
             dAnim.frameHeight = self.dogFrameH;
-            dAnim.rowOrder    = ['down', 'right', 'up', 'left'];  // dog sheet's row layout
+            dAnim.rowOrder    = ['down', 'left', 'right', 'up'];  // match the XCB niupai (PlayerAnimator default)
             dAnim._buildFrames();
             dAnim.setMoving(false);
             self._dogNode = dNode;
@@ -284,6 +301,7 @@ cc.Class({
     },
 
     onDisable: function () {
+        this._keys = {};   // drop any held keys when hidden (e.g. entering a node-toggle minigame)
         if (this._bgmId >= 0) {
             cc.audioEngine.stop(this._bgmId);
             this._bgmId = -1;
@@ -366,6 +384,10 @@ cc.Class({
     },
 
     _onKeyDown: function (e) {
+        // Ignore keys while MainGame is hidden (e.g. the Osu node-toggle minigame is on
+        // screen) — the global cc.systemEvent listener stays subscribed otherwise, so
+        // SPACE/E would re-trigger the overworld conversation underneath the minigame.
+        if (!this.node.activeInHierarchy) return;
         this._keys[e.keyCode] = true;
         // No overworld interaction while a dialogue is on screen
         if (StoryState.dialogueActive) return;
@@ -384,6 +406,9 @@ cc.Class({
     },
 
     _onKeyUp: function (e) {
+        // Always honour releases (even while hidden): a movement key held when a
+        // node-toggle minigame (Osu) starts would otherwise stay "down" and auto-walk
+        // the player the moment MainGame re-activates.
         this._keys[e.keyCode] = false;
     },
 

@@ -36,6 +36,8 @@ cc.Class({
         this._button('▶  START GAME', 0, -H / 2 + 104, 380, 84, COL_PINK, COL_PINK2, function () {
             self._start();
         });
+        // ── Hero Mode toggle — no heart loss, run is not ranked ──
+        this._heroToggle(0, -H / 2 + 206);
         // small hint
         this._label('press  Esc  for sound options', 18, cc.color(235, 230, 240), 0, -H / 2 + 44);
 
@@ -47,6 +49,38 @@ cc.Class({
 
     onDestroy: function () {
         try { cc.audioEngine.stopMusic(); } catch (e) {}
+    },
+
+    // ── Hero Mode toggle button (persisted via StoryState.setHeroMode) ──
+    _heroToggle: function (x, y) {
+        var node = new cc.Node('heroBtn');
+        node.parent = this.node;
+        node.setPosition(x, y);
+        var w = 380, h = 60;
+        node.setContentSize(w, h);
+        var g = node.addComponent(cc.Graphics);
+        var lblNode = new cc.Node('lbl');
+        lblNode.parent = node;
+        var l = lblNode.addComponent(cc.Label);
+        l.fontSize = 24;
+        l.lineHeight = 28;
+        lblNode.color = cc.color(255, 255, 255);
+        PixelFont.apply(l);
+        var redraw = function () {
+            var on = StoryState.heroMode;
+            g.clear();
+            g.fillColor = on ? cc.color(90, 200, 130) : cc.color(70, 70, 90);
+            g.roundRect(-w / 2, -h / 2, w, h, 12); g.fill();
+            g.lineWidth = 3; g.strokeColor = cc.color(255, 255, 255, 70);
+            g.roundRect(-w / 2, -h / 2, w, h, 12); g.stroke();
+            l.string = 'HERO MODE:  ' + (on ? 'ON' : 'OFF');
+        };
+        redraw();
+        node.on(cc.Node.EventType.TOUCH_END, function () {
+            StoryState.setHeroMode(!StoryState.heroMode);
+            redraw();
+        }, this);
+        return node;
     },
 
     _start: function () {

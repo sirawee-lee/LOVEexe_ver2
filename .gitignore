@@ -49,3 +49,9 @@ Thumbs.db
 #//////////////////////////
 
 .vscode/
+
+#//////////////////////////
+# Firebase Hosting (CLI cache; firebase.json/.firebaserc ARE tracked)
+#//////////////////////////
+
+.firebase/

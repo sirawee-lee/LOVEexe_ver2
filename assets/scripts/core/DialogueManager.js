@@ -218,10 +218,23 @@ cc.Class({
 
     // ── Input ─────────────────────────────────────────────────
     _onKeyDown: function (e) {
-        if (e.keyCode !== cc.macro.KEY.space && e.keyCode !== cc.macro.KEY.enter) return;
+        if (this._st === ST.IDLE) return;
+        var K = cc.macro.KEY;
+        // ── choice navigation: Up/PageUp = prev, Down/PageDown = next, Enter = pick ──
+        if (this._st === ST.WAIT_CHOICE) {
+            if (e.keyCode === K.up   || e.keyCode === K.pageup   || e.keyCode === K.w) { this._moveChoice(-1); return; }
+            if (e.keyCode === K.down || e.keyCode === K.pagedown || e.keyCode === K.s) { this._moveChoice(1);  return; }
+            if (e.keyCode === K.enter || e.keyCode === K.space) {
+                if (this._advanceKeyHeld) return;   // ignore auto-repeat
+                this._advanceKeyHeld = true;
+                this._confirmChoice();
+            }
+            return;   // swallow other keys while choosing
+        }
+        // ── normal advance (TYPING / WAIT_ADVANCE) ──
+        if (e.keyCode !== K.space && e.keyCode !== K.enter) return;
         if (this._advanceKeyHeld) return;       // ignore OS key auto-repeat
         this._advanceKeyHeld = true;
-        if (this._st === ST.IDLE) return;
         this._advance();
     },
 
@@ -292,14 +305,60 @@ cc.Class({
             bn.addChild(tn, 1);
 
             bn.on('click', function () { self._onChoice(choice, i); }, self);
+            // stash highlight data + sync the keyboard highlight on mouse hover
+            bn._dmNormalSF = normalSF;
+            bn._dmHoverSF  = hoverSF;
+            bn._dmBtn      = btn;
+            bn._dmChoice   = choice;
+            bn.on(cc.Node.EventType.MOUSE_ENTER, function () { self._highlightChoice(i); }, self);
             self._choiceBox.addChild(bn, 1);
             self._choiceBtns.push(bn);
         });
+        // start with the first choice highlighted (keyboard + visual)
+        self._highlightChoice(0);
+    },
+
+    // Visually emphasise choice i; persists regardless of the Button's hover state.
+    _highlightChoice: function (i) {
+        var n = this._choiceBtns.length;
+        if (n === 0) return;
+        if (i < 0) i = 0; else if (i >= n) i = n - 1;
+        this._choiceIndex = i;
+        for (var k = 0; k < n; k++) {
+            var bn = this._choiceBtns[k];
+            if (!bn || !bn.isValid) continue;
+            var on = (k === i);
+            var sf = on ? bn._dmHoverSF : bn._dmNormalSF;
+            var spr = bn.getComponent(cc.Sprite);
+            if (spr) spr.spriteFrame = sf;
+            if (bn._dmBtn) bn._dmBtn.normalSprite = sf;   // keep the Button's resting frame in sync
+            bn.setScale(on ? 1.06 : 1.0);
+            bn.opacity = on ? 255 : 205;
+        }
+    },
+
+    // Move the highlight (wraps around); called by Up/Down / PageUp/PageDown.
+    _moveChoice: function (delta) {
+        var n = this._choiceBtns.length;
+        if (n === 0) return;
+        var i = (this._choiceIndex < 0 ? 0 : this._choiceIndex) + delta;
+        i = ((i % n) + n) % n;
+        if (this.sfxBlip) cc.audioEngine.play(this.sfxBlip, false, 0.4);
+        this._highlightChoice(i);
+    },
+
+    // Confirm the highlighted choice — same path as a mouse click.
+    _confirmChoice: function () {
+        if (this._st !== ST.WAIT_CHOICE) return;
+        var bn = this._choiceBtns[this._choiceIndex];
+        if (!bn || !bn.isValid || !bn._dmChoice) return;
+        this._onChoice(bn._dmChoice, this._choiceIndex);
     },
 
     _clearChoices: function () {
         this._choiceBtns.forEach(function (b) { if (b && b.isValid) b.destroy(); });
         this._choiceBtns = [];
+        this._choiceIndex = -1;
     },
 
     _onChoice: function (choice, idx) {

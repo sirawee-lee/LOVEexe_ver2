@@ -1,0 +1,13 @@
+{
+  "hosting": {
+    "public": "build/web-desktop",
+    "predeploy": [
+      "node firebase-patch-title.js"
+    ],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
