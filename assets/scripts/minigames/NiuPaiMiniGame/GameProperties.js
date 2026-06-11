@@ -3,6 +3,7 @@
 var GameProperties = {
     DEFAULTS: {
         sfxVolume: 0.9,
+        bgmVolume: 0.65,
         scoreOrderPoints: 100,
         scoreBlackDogDamagePoints: 100,
         scoreObstacleRemovePoints: 100,
@@ -76,6 +77,7 @@ var GameProperties = {
         tunnelMapRows: 6,
         tunnelEntranceWidth: 16,
         tunnelEntranceHeight: 48,
+        teleportExitPadding: 20,
 
         colliderLayerName: 'ConsistentCollider',
         initialObstacleLayerName: 'InitialObstacle',

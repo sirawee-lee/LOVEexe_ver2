@@ -5113,9 +5113,7 @@
     "tiledMapFgNode": {
       "__id__": 99
     },
-    "mapTexture": {
-      "__uuid__": "e4d0e89d-2515-49a4-bb98-46c996ae1072"
-    },
+    "mapTexture": null,
     "playerSheet": {
       "__uuid__": "eed3281a-fffa-4b9d-8f66-59f9594c8d10"
     },

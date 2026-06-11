@@ -33,6 +33,7 @@ const Juice        = require('Juice');           // screen shake / floating text
 const Gamepad      = require('Gamepad');         // controller support (Gamepad API)
 const StoryState   = require('StoryState');     // overworld bridge (persists across loadScene)
 const EndingScreen = require('EndingScreen');   // finale / boss-fail end screens
+const ScreenTransition = require('ScreenTransition');
 require('PauseMenu');                            // global ESC pause menu (idempotent init)
 
 const SEQUENCE = ['needle', 'counterGame', 'dontPress', 'flappy1', 'runner'];
@@ -205,33 +206,12 @@ const GameFlow = {
     },
 
     // ---- Scene-transition fade + heart-loss juice ----------------------------
-    _fadeCover(opacityFrom) {
-        const canvas = this._getCanvas();
-        if (!canvas) return null;
-        const node = new cc.Node('__FlowFade');
-        node.parent = canvas;
-        node.zIndex = 99999;                 // above everything, including overlays
-        node.setContentSize(canvas.width, canvas.height);
-        const g = node.addComponent(cc.Graphics);
-        g.fillColor = cc.color(0, 0, 0);
-        g.rect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
-        g.fill();
-        node.opacity = opacityFrom;
-        return node;
-    },
-
     _fadeOut(cb) {
-        const node = this._fadeCover(0);
-        if (!node) { if (cb) cb(); return; }
-        cc.tween(node).to(0.22, { opacity: 255 }).call(() => { if (cb) cb(); }).start();
+        ScreenTransition.fadeOut(cb);
     },
 
     _fadeIn() {
-        const node = this._fadeCover(255);
-        if (!node) return;
-        cc.tween(node).to(0.22, { opacity: 0 })
-            .call(() => { if (cc.isValid(node)) node.destroy(); })
-            .start();
+        ScreenTransition.fadeIn();
     },
 
     _juiceHeartLoss() {

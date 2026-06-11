@@ -13,6 +13,7 @@
 var StoryState   = require('StoryState');
 var GameFlow     = require('GameFlow');      // the 5-game boss rush (scene-flow module)
 var EndingScreen = require('EndingScreen');  // game-over / finale overlays
+var ScreenTransition = require('ScreenTransition');
 
 // XiaoChiBu.fire is now fully wired (NiuPaiMinigame component + assets), pulled from
 // the XiaoChiBu_Game branch — so the Niu Pai NPC launches the REAL dog minigame as
@@ -65,7 +66,9 @@ cc.Class({
                     StoryState.markComplete(r.key);
                     StoryState.addScore(r.key, r.score);   // only count cleared runs
                     if (r.key === 'niupai') StoryState.dogJoined = true;  // dog now follows
-                    self._dm.play(r.key + '_post_win');
+                    self._playPostWin(r.key);
+                } else if (r.key === 'niupai' && r.reason === 'incorrect_food') {
+                    self._playNiuPaiTryAgain();
                 } else {
                     // a full-minigame loss empties one heart; 0 hearts → game over
                     if (StoryState.recordFail(r.key)) { EndingScreen.showGameOver(); return; }
@@ -93,6 +96,63 @@ cc.Class({
         else if (onDone) onDone();
     },
 
+    _playPostWin: function (key) {
+        var self = this;
+        if (key !== 'niupai') {
+            self._say(key + '_post_win');
+            return;
+        }
+
+        self._setNiuPaiCompanionJoined(true);
+        self._say('niupai_post_game', function () {
+            ScreenTransition.fadeOutIn(function () {
+                self._teleportPlayerNearMei();
+            }, function () {
+                self._say('niupai_post_mei_correct');
+            });
+        });
+    },
+
+    _playNiuPaiTryAgain: function () {
+        var self = this;
+        self._setNiuPaiCompanionJoined(true);
+        self._say('niupai_post_game', function () {
+            ScreenTransition.fadeOutIn(function () {
+                self._teleportPlayerNearMei();
+            }, function () {
+                self._say('niupai_post_mei_wrong', function () {
+                    self._setNiuPaiCompanionJoined(false);
+                });
+            });
+        });
+    },
+
+    _setNiuPaiCompanionJoined: function (joined) {
+        StoryState.dogJoined = !!joined;
+        var mainGame = this.mainGameNode ? this.mainGameNode.getComponent('MainGame') : null;
+        if (mainGame && mainGame.setNiuPaiCompanionJoined) {
+            mainGame.setNiuPaiCompanionJoined(!!joined);
+        }
+    },
+
+    _teleportPlayerNearMei: function () {
+        var mainGame = this.mainGameNode ? this.mainGameNode.getComponent('MainGame') : null;
+        if (!mainGame || !mainGame.teleportPlayerNearNpc) {
+            cc.warn('[GameController] MainGame teleportPlayerNearNpc unavailable.');
+            return;
+        }
+        mainGame.teleportPlayerNearNpc('mei', cc.v2(0, -60));
+    },
+
+    _teleportPlayerNearNiuPai: function () {
+        var mainGame = this.mainGameNode ? this.mainGameNode.getComponent('MainGame') : null;
+        if (!mainGame || !mainGame.teleportPlayerNearNpc) {
+            cc.warn('[GameController] MainGame teleportPlayerNearNpc unavailable.');
+            return;
+        }
+        mainGame.teleportPlayerNearNpc('niupai', cc.v2(0, 80));
+    },
+
     // ── NPC interaction router ────────────────────────────────
     _onNpcInteract: function (npcId) {
         var self = this;
@@ -108,7 +168,7 @@ cc.Class({
             case 'niupai':
                 // Real dog game once XiaoChiBu is wired; safe placeholder until then.
                 if (NIUPAI_SCENE_READY) {
-                    self._runSceneChallenge('niupai', 'niupai_pre', 'niupai_done', 'XiaoChiBu');
+                    self._runNiuPaiSceneChallenge();
                 } else {
                     self._runNiupai();
                 }
@@ -164,6 +224,34 @@ cc.Class({
         });
     },
 
+    _runNiuPaiSceneChallenge: function () {
+        var self = this;
+        if (StoryState.completed.niupai) { self._say('niupai_done'); return; }
+
+        var startGame = function () {
+            self._say('niupai_pre_game', function () {
+                self._say('ready_to_play', function () {
+                    cc.director.loadScene('XiaoChiBu');
+                });
+            });
+        };
+
+        if (StoryState.seen['niupai_pre_mei']) {
+            startGame();
+            return;
+        }
+
+        ScreenTransition.fadeOutIn(function () {
+            self._teleportPlayerNearMei();
+        }, function () {
+            self._say('niupai_pre_mei', function () {
+                ScreenTransition.fadeOutIn(function () {
+                    self._teleportPlayerNearNiuPai();
+                }, startGame);
+            });
+        });
+    },
+
     // ── Minigame launchers (activate node, run, restore overworld) ──
     _runOsu: function (cb) {
         var self = this;
@@ -207,12 +295,12 @@ cc.Class({
         if (StoryState.completed.niupai) { self._say('niupai_done'); return; }
         // Placeholder for the not-yet-wired XiaoChiBu game: greet, then a deliberate
         // "ready?" confirm so it never auto-completes just by walking past the dog.
-        self._say('niupai_pre', function () {
+        self._say('niupai_pre_game', function () {
             self._say('ready_to_play', function () {
                 StoryState.markComplete('niupai');
                 StoryState.dogJoined = true;
                 StoryState.addScore('niupai', 0);
-                self._say('niupai_post_win');
+                self._playPostWin('niupai');
             });
         });
     },

@@ -301,8 +301,13 @@
     },
     "_enabled": true,
     "bgm": {
-      "__uuid__": "10472abf-8b40-453b-bf94-820c890c0a2c"
+      "__uuid__": "5084c96d-b59d-4dd7-b449-6f1e4ea20501"
     },
+    "tunnelBgm": {
+      "__uuid__": "b8be2f82-42c3-49ca-81e2-664d39daaa9b"
+    },
+    "debugImmediateResult": false,
+    "debugImmediateResultType": 2,
     "sfxCorrect": null,
     "sfxWrong": null,
     "sfxPause": null,
@@ -357,7 +362,9 @@
     "sfxNiuPaiDamage": {
       "__uuid__": "3b4f8e25-5262-447e-89b3-3bfc9baef6de"
     },
-    "sfxBlackDogSpawn": null,
+    "sfxBlackDogSpawn": {
+      "__uuid__": "4803d682-fa98-4171-bca0-15957a2576eb"
+    },
     "sfxBlackDogAttack": null,
     "sfxBlackDogStun": null,
     "sfxBlackDogBaitAlert": null,

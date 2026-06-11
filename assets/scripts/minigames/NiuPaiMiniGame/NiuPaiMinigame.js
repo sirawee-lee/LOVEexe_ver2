@@ -10,6 +10,12 @@ var NPNotification = require('NPNotification');
 var NPDialogue = require('NPDialogue');
 var GameProperties = require('GameProperties');
 
+var DebugImmediateResultType = cc.Enum({
+    Win: 0,
+    WrongFood: 1,
+    Lose: 2,
+});
+
 // Xiao Chi Bu minigame shell.
 // This file owns only the minigame lifecycle for now; gameplay systems will be
 // added in the next TODOs.
@@ -20,6 +26,9 @@ cc.Class({
 
     properties: {
         bgm:        { default: null, type: cc.AudioClip },
+        tunnelBgm:  { default: null, type: cc.AudioClip },
+        debugImmediateResult: { default: false },
+        debugImmediateResultType: { default: DebugImmediateResultType.Win, type: DebugImmediateResultType },
         sfxCorrect: { default: null, type: cc.AudioClip },
         sfxWrong:   { default: null, type: cc.AudioClip },
         sfxPause: { default: null, type: cc.AudioClip },
@@ -95,8 +104,10 @@ cc.Class({
         this._active = false;
         this._paused = false;
         this._bgmId = -1;
+        this._currentBgmClip = null;
         this._runtimeScore = 0;
         this._elapsedGameSeconds = 0;
+        this._debugImmediateResultTriggered = false;
         this._walletDropTimer = 0;
         this._walletPlayerDropCooldownTimer = 0;
         this._wallets = [];
@@ -134,6 +145,7 @@ cc.Class({
         this._currentSection = 'main';
         this._teleportCooldown = 0;
         this._teleportNeedsExit = false;
+        this._teleportExitHoldRect = null;
         this._teleportPromptNode = null;
         this._orderAreaPromptNode = null;
         this._orderPromptNode = null;
@@ -224,9 +236,9 @@ cc.Class({
 
     start: function () {
         if (this._active || this._onResult) return;
-        this.startGame(function (win, score) {
+        this.startGame(function (win, score, reason) {
             var StoryState = require('StoryState');
-            StoryState.lastResult = { key: 'niupai', win: !!win, score: score || 0 };
+            StoryState.lastResult = { key: 'niupai', win: !!win, score: score || 0, reason: reason || '' };
             cc.director.loadScene('MainScene');
         });
     },
@@ -242,6 +254,7 @@ cc.Class({
         this._keys = {};
         this._runtimeScore = 0;
         this._elapsedGameSeconds = 0;
+        this._debugImmediateResultTriggered = false;
         this._walletDropTimer = Math.max(0.01, this.walletDropIntervalSeconds || 5);
         this._walletPlayerDropCooldownTimer = 0;
         this._walletNoticeCooldown = 0;
@@ -250,6 +263,7 @@ cc.Class({
         this._currentSection = 'main';
         this._teleportCooldown = 0;
         this._teleportNeedsExit = false;
+        this._teleportExitHoldRect = null;
         this._canOrder = false;
         this._orderOpen = false;
         this._orderBackHeld = false;
@@ -272,9 +286,7 @@ cc.Class({
         this._setupCamera();
         this._updateHud(0);
         this._showIntroDialogue();
-        if (this.bgm) {
-            this._bgmId = cc.audioEngine.play(this.bgm, true, 0.65);
-        }
+        this._playSectionBgm('main');
 
     },
 
@@ -3279,7 +3291,7 @@ cc.Class({
 
         var touching = this._rectsOverlap(playerRect, triggerRect);
         if (this._teleportNeedsExit) {
-            if (!touching) this._teleportNeedsExit = false;
+            this._updateTeleportNeedsExit(playerRect);
             return;
         }
         if (this._teleportCooldown > 0) return;
@@ -3351,6 +3363,49 @@ cc.Class({
         if (!a || !b) return false;
         return a.minX <= b.maxX && a.maxX >= b.minX &&
                a.minY <= b.maxY && a.maxY >= b.minY;
+    },
+
+    _isPlayerInTeleportExitHoldArea: function (playerRect, triggerRect) {
+        var padding = Math.max(0, this.teleportExitPadding || 0);
+        return this._rectsOverlap(playerRect, {
+            minX: triggerRect.minX - padding,
+            maxX: triggerRect.maxX + padding,
+            minY: triggerRect.minY - padding,
+            maxY: triggerRect.maxY + padding,
+        });
+    },
+
+    _makeTeleportTriggerRect: function (center) {
+        var halfW = this.tunnelEntranceWidth / 2;
+        var halfH = this.tunnelEntranceHeight / 2;
+        return {
+            minX: center.x - halfW,
+            maxX: center.x + halfW,
+            minY: center.y - halfH,
+            maxY: center.y + halfH,
+        };
+    },
+
+    _setTeleportNeedsExit: function (triggerRect) {
+        this._teleportNeedsExit = true;
+        this._teleportExitHoldRect = triggerRect ? {
+            minX: triggerRect.minX,
+            maxX: triggerRect.maxX,
+            minY: triggerRect.minY,
+            maxY: triggerRect.maxY,
+        } : null;
+    },
+
+    _updateTeleportNeedsExit: function (playerRect) {
+        if (!this._teleportNeedsExit) return false;
+
+        if (!this._teleportExitHoldRect ||
+            !this._isPlayerInTeleportExitHoldArea(playerRect, this._teleportExitHoldRect)) {
+            this._teleportNeedsExit = false;
+            this._teleportExitHoldRect = null;
+        }
+
+        return this._teleportNeedsExit;
     },
 
     _getTunnelEntranceCenter: function () {
@@ -3591,9 +3646,10 @@ cc.Class({
         );
         var target = this._getTunnelReturnEntranceCenter() || fallback;
 
+        this._playSfx(this.sfxTeleport);
         this._currentSection = 'tunnel';
         this._teleportCooldown = 0.35;
-        this._teleportNeedsExit = true;
+        this._setTeleportNeedsExit(this._makeTeleportTriggerRect(target));
         this._playerNode.setPosition(target);
         if (this._playerBody) {
             this._playerBody.linearVelocity = cc.v2(0, 0);
@@ -3602,7 +3658,7 @@ cc.Class({
         if (this._niuPaiControl) this._niuPaiControl.moveNearPlayer();
         if (this._blackDogControl) this._blackDogControl.onEnterTunnel();
         this._updateCameraFollow();
-        this._playSfx(this.sfxTeleport);
+        this._playSectionBgm('tunnel');
         this._showFirstTunnelIntroDialogue();
         cc.log('[NiuPai] Teleported to tunnel at ' + target.x + ', ' + target.y);
     },
@@ -3626,7 +3682,7 @@ cc.Class({
 
         var touching = this._rectsOverlap(playerRect, triggerRect);
         if (this._teleportNeedsExit) {
-            if (!touching) this._teleportNeedsExit = false;
+            this._updateTeleportNeedsExit(playerRect);
             return;
         }
         if (this._teleportCooldown > 0) return;
@@ -3640,9 +3696,10 @@ cc.Class({
         var fallback = this.playerStartPosition;
         var target = this._getTunnelEntranceCenter() || fallback;
 
+        this._playSfx(this.sfxTeleport);
         this._currentSection = 'main';
         this._teleportCooldown = 0.35;
-        this._teleportNeedsExit = true;
+        this._setTeleportNeedsExit(this._makeTeleportTriggerRect(target));
         this._playerNode.setPosition(target);
         if (this._playerBody) {
             this._playerBody.linearVelocity = cc.v2(0, 0);
@@ -3651,7 +3708,7 @@ cc.Class({
         if (this._niuPaiControl) this._niuPaiControl.moveNearPlayer();
         if (this._blackDogControl) this._blackDogControl.onExitTunnel();
         this._updateCameraFollow();
-        this._playSfx(this.sfxTeleport);
+        this._playSectionBgm('main');
         cc.log('[NiuPai] Returned to main at ' + target.x + ', ' + target.y);
     },
 
@@ -3674,7 +3731,7 @@ cc.Class({
 
         var touching = this._rectsOverlap(playerRect, triggerRect);
         if (this._teleportNeedsExit) {
-            if (!touching) this._teleportNeedsExit = false;
+            this._updateTeleportNeedsExit(playerRect);
             return;
         }
         if (this._teleportCooldown > 0) return;
@@ -3683,7 +3740,7 @@ cc.Class({
             if (!this._heldItem) {
                 this._playSfx(this.sfxTunnelExitBlocked);
                 this._showTunnelExitNoFoodDialogue();
-                this._teleportNeedsExit = true;
+                this._setTeleportNeedsExit(triggerRect);
                 this._teleportCooldown = 0.2;
                 return;
             }
@@ -3722,7 +3779,7 @@ cc.Class({
         cc.log('[NiuPai] Tunnel exit reached. Holding=' + held +
             ' spoil=' + Math.ceil(this._foodSpoilTime) + ' win=' + win);
         if (this._blackDogControl) this._blackDogControl.onExitTunnel();
-        this._finishGame(win, win ? 1 : 0);
+        this._finishGame(win, win ? 1 : 0, win ? '' : 'incorrect_food');
     },
 
     _hasWinningFood: function () {
@@ -4206,7 +4263,7 @@ cc.Class({
         return node;
     },
 
-    _finishGame: function (win, score) {
+    _finishGame: function (win, score, reason) {
         if (!this._active) return;
 
         var finalScore = this._calculateFinalScore(!!win);
@@ -4224,7 +4281,7 @@ cc.Class({
         if (win) this._playSfx(this.sfxCorrect);
         else this._playSfx(this.sfxWrong);
 
-        if (this._onResult) this._onResult(!!win, finalScore);
+        if (this._onResult) this._onResult(!!win, finalScore, reason || '');
     },
 
     _calculateFinalScore: function (win) {
@@ -4255,11 +4312,26 @@ cc.Class({
         return cc.audioEngine.play(clip, false, Math.max(0, Math.min(1, baseVolume * scale)));
     },
 
+    _playSectionBgm: function (section) {
+        var clip = section === 'tunnel'
+            ? (this.tunnelBgm || this.bgm)
+            : this.bgm;
+        if (this._currentBgmClip === clip && this._bgmId >= 0) return;
+
+        this._stopBgm();
+        this._currentBgmClip = clip || null;
+        if (!clip) return;
+
+        var volume = typeof this.bgmVolume === 'number' ? this.bgmVolume : 0.65;
+        this._bgmId = cc.audioEngine.play(clip, true, Math.max(0, Math.min(1, volume)));
+    },
+
     _stopBgm: function () {
         if (this._bgmId >= 0) {
             cc.audioEngine.stop(this._bgmId);
             this._bgmId = -1;
         }
+        this._currentBgmClip = null;
     },
 
     update: function (dt) {
@@ -4301,6 +4373,7 @@ cc.Class({
         this._updateMcFlurryExplosions(dt);
         this._updateWallets(dt);
         this._elapsedGameSeconds += Math.max(0, dt || 0);
+        this._updateDebugImmediateResult();
         this._updateCameraFollow();
         this._updateHud(dt);
         this._updatePauseOverlayPosition();
@@ -4308,6 +4381,23 @@ cc.Class({
         if (this._notificationControl) this._notificationControl.update(dt);
         if (this._orderOpen) {
             this._updateOrderOverlayPosition();
+        }
+    },
+
+    _updateDebugImmediateResult: function () {
+        if (!this.debugImmediateResult || this._debugImmediateResultTriggered) return;
+        if ((this._elapsedGameSeconds || 0) < 3) return;
+
+        this._debugImmediateResultTriggered = true;
+        var type = this.debugImmediateResultType;
+        cc.log('[NiuPai] debugImmediateResult triggered. type=' + type);
+
+        if (type === DebugImmediateResultType.WrongFood) {
+            this._finishGame(false, 0, 'incorrect_food');
+        } else if (type === DebugImmediateResultType.Lose) {
+            this._finishGame(false, 0);
+        } else {
+            this._finishGame(true, 1);
         }
     },
 });
