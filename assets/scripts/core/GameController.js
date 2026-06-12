@@ -105,29 +105,14 @@ cc.Class({
             return;
         }
 
+        // Won the dog over → she joins you on the spot. Just the dog, no detours.
         self._setNiuPaiCompanionJoined(true);
-        self._say('niupai_post_game', function () {
-            ScreenTransition.fadeOutIn(function () {
-                self._teleportPlayerNearMei();
-            }, function () {
-                self._say('niupai_post_mei_correct');
-            });
-        });
+        self._say('niupai_post_win');
     },
 
     _playNiuPaiTryAgain: function () {
-        var self = this;
-        self._setNiuPaiCompanionJoined(true);
-        self._say('niupai_post_game', function () {
-            ScreenTransition.fadeOutIn(function () {
-                self._teleportPlayerNearMei();
-            }, function () {
-                self._say('niupai_post_mei_wrong', function () {
-                    self._setNiuPaiCompanionJoined(false);
-                    Account.saveProgress();   // re-checkpoint: the cutscene dog has left again
-                });
-            });
-        });
+        // Wrong food — the dog sends you back for another go (soft fail, no heart).
+        this._say('niupai_try_again');
     },
 
     _setNiuPaiCompanionJoined: function (joined) {
@@ -229,29 +214,13 @@ cc.Class({
     },
 
     _runNiuPaiSceneChallenge: function () {
+        // Walk up to the dog → talk to the dog → play the dog's game.
+        // (No Mei cutscene here — the player only ever talks to Niu Pai.)
         var self = this;
         if (StoryState.completed.niupai) { self._say('niupai_done'); return; }
-
-        var startGame = function () {
-            self._say('niupai_pre_game', function () {
-                self._say('ready_to_play', function () {
-                    cc.director.loadScene('XiaoChiBu');
-                });
-            });
-        };
-
-        if (StoryState.seen['niupai_pre_mei']) {
-            startGame();
-            return;
-        }
-
-        ScreenTransition.fadeOutIn(function () {
-            self._teleportPlayerNearMei();
-        }, function () {
-            self._say('niupai_pre_mei', function () {
-                ScreenTransition.fadeOutIn(function () {
-                    self._teleportPlayerNearNiuPai();
-                }, startGame);
+        self._say('niupai_pre_game', function () {
+            self._say('ready_to_play', function () {
+                cc.director.loadScene('XiaoChiBu');
             });
         });
     },

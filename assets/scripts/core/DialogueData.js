@@ -114,104 +114,41 @@ module.exports = {
             ],
         },
 
-        // ── Niu Pai (XCB food stall) → market dash (placeholder) ──
-        niupai_pre: {
-            lines: [
-                { speaker: 'Stall Owner', text: "Ay, kid! Niu Pai's been staking out the XCB McDonald's all afternoon — and she's not the only stray with an appetite." },
-                { speaker: 'EECS Boy',    text: "(A food court. A hungry dog. Rival strays circling. My EECS degree prepared me for precisely none of this.)" },
-                { speaker: 'Stall Owner', text: "Get her the right order through that crowd without the other dogs swiping it, and you've got a friend for life. Fumble it... good luck." },
-                { speaker: 'EECS Boy',    text: "Alright, Niu Pai — operation Happy Meal. Stay close. (Win the dog, win Mei. Let's eat.)" },
-            ],
-        },
-        // ── XiaoChiBu (Niu Pai) extended story arc — added by groupmate (XiaoChiBu_Game) ──
-        niupai_pre_mei: {
-            lines: [
-                { speaker: 'Narrator',     text: 'The algorithm exam at noon was the hardest one anyone had ever seen. It even ran almost an hour late before it finally ended.' },
-                { speaker: 'Narrator',     text: 'Everyone left the classroom with heavy hearts.' },
-                { speaker: 'EECS Boy',     text: '...' },
-                { speaker: 'Narrator',     text: 'EECS Boy notices Mei lying face-down on her desk, completely drained.' },
-                { speaker: 'EECS Boy',     text: 'She probably messed up the exam...' },
-                { speaker: "Mei's Friend", text: "She doesn't want to leave... Lunch break ended a long time ago, too. This really isn't good." },
-                { speaker: 'Narrator',     text: 'EECS Boy remembers how Mei once helped him find his missing OS assignment.' },
-                { speaker: 'Narrator',     text: 'He decides that now, it is his turn to cheer her up.' },
-                { speaker: 'EECS Boy',     text: 'I can go buy her something to eat...' },
-                { speaker: "Mei's Friend", text: 'Who are you?' },
-                { speaker: 'EECS Boy',     text: "I'm her friend. Do you know what Mei likes?" },
-                { speaker: "Mei's Friend", text: "Hmm... She likes things that are sweet and smell nice... Food that makes you feel warm when you eat it." },
-                { speaker: 'EECS Boy',     text: 'Got it!' },
-            ],
-        },
+        // ── Niu Pai (XCB food stall) → the dog game ───────────
+        // The player talks ONLY to the dog here — no Mei cutscene, no detours.
+        // Format: EECS Boy talks normally; Niu Pai answers in woofs + translation.
         niupai_pre_game: {
             lines: [
-                { speaker: 'Narrator',     text: "With Mei's friend's clue in mind, EECS Boy heads to the food court, searching for something sweet, warm, and comforting." },
-                { speaker: 'EECS Boy',     text: "(Sweet, smells nice, and makes you feel warm... Okay. That sounds simple enough.)" },
-                { speaker: 'Narrator',     text: "But the food court feels strangely tense. Students are guarding their trays, and a group of black dogs prowls near the XCB McDonald's." },
-                { speaker: 'Stall Owner',  text: "Ay, kid! If you're heading for McDonald's, watch yourself. The Black Dogs have been causing trouble all afternoon." },
-                { speaker: 'EECS Boy',     text: "Black Dogs...?" },
-                { speaker: 'Stall Owner',  text: "A nasty pack of strays. They bark, shove, steal food... pretty much anything to scare people off." },
-                { speaker: 'Narrator',     text: "Near the entrance, EECS Boy spots a small dog standing her ground, glaring at the Black Dogs." },
-                { speaker: 'Stall Owner',  text: "That's Niu Pai. She's been trying to get through, but those Black Dogs keep blocking the way." },
-                { speaker: 'EECS Boy',     text: "(A food court. A brave dog. A gang of Black Dogs. My EECS degree prepared me for precisely none of this.)" },
-                { speaker: 'Stall Owner',  text: "Help Niu Pai get the right order through that crowd, and she'll stick with you. That dog never forgets a friend." },
-                { speaker: 'EECS Boy',     text: "Alright, Niu Pai. Operation Happy Meal. We get the food, dodge the Black Dogs, and bring something warm back to Mei." },
-                { speaker: 'Niu Pai',      text: "Woof!" },
+                { speaker: 'EECS Boy', text: "Hey there... you must be Niu Pai. The whole food court's talking about you." },
+                { speaker: 'Niu Pai',  text: "Woof! (Translation: 'The one and only. State your business, human.')" },
+                { speaker: 'EECS Boy', text: "I need to grab the right order from the XCB McDonald's — something sweet and warm. But those Black Dogs are blocking the whole entrance..." },
+                { speaker: 'Niu Pai',  text: "Grrr... woof woof! (Translation: 'Those bullies steal everyone's food. I've been waiting to teach them a lesson.')" },
+                { speaker: 'EECS Boy', text: "Then let's team up. You watch my back, I handle the ordering. Deal?" },
+                { speaker: 'Niu Pai',  text: "WOOF! (Translation: 'Operation Happy Meal is GO. Stay close and don't drop the food, human.')" },
             ],
         },
-        niupai_post_game: {
-            // triggered if player / Niu Pai not defeated; bring the food to Mei first.
+        niupai_try_again: {
+            // wrong food brought out of the tunnel — soft fail, no heart lost
             lines: [
-                { speaker: 'EECS Boy', text: " (Panting) Oh my god... Hope this food is correct..." },
-                { speaker: 'Narrator', text: "EECS boy and Niu Pai headed to the EECS building" },
-            ],
-        },
-        niupai_post_mei_correct: {
-            // correct food, Mei accepts and Niu Pai joins you.
-            lines: [
-                { speaker: 'Narrator', text: "EECS peeked through the window, Mei was still there but her friend was gone." },
-                { speaker: 'EECS Boy', text: "(Opened the door, went to her seat)" },
-                { speaker: 'EECS Boy', text: "Hello... I brought you something to eat. I hope it's what you like." },
-                { speaker: 'Mei',      text: "Ok... But why?" },
-                { speaker: 'EECS Boy', text: "I know you had a tough exam today... I just wanted to cheer you up. I hope this helps." },
-                { speaker: 'Mei',      text: "(Checks the bag, inside of it is an Apple Pie)" },
-                { speaker: 'Mei',      text: "This is... actually my favorite. How did you know?" },
-                { speaker: 'EECS Boy', text: "Magic. Just a wild guess. I'm glad you like it. (Smiles)" },
-                { speaker: 'Narrator', text: "Mei takes a bite, and her eyes widen. A small smile creeps onto her face." },
-                { speaker: 'Mei',      text: "Thank you... This is really sweet of you. I don't know what to say." },
-                { speaker: 'EECS Boy', text: "You're welcome. I'm just happy to see you smile. Have a nice day!" },
-                { speaker: 'Narrator', text: "(EECS boy and Niu Pai headed out the EECS building)" },
-                { speaker: 'EECS Boy', text: "(Headpat the dog) Good Boy!" },
-                { speaker: 'Niu Pai',  text: "*WOOF!* (Translation: 'We did it, partner!')" },
-                { speaker: 'Narrator', text: "Niu Pai follows you loyally from now on, you really did a good job. You are forever friends!" },
-            ],
-        },
-        niupai_post_mei_wrong: {
-            // incorrect food, Niu Pai goes back to XCB to wait for you.
-            lines: [
-                { speaker: 'Narrator', text: "EECS peeked through the window, Mei was still there but her friend was gone." },
-                { speaker: 'EECS Boy', text: "(Opened the door, went to her seat)" },
-                { speaker: 'EECS Boy', text: "Hello... I brought you something to eat. I hope it's what you like." },
-                { speaker: 'Mei',      text: "Ok... But why?" },
-                { speaker: 'EECS Boy', text: "I know you had a tough exam today... I just wanted to cheer you up. I hope this helps." },
-                { speaker: 'Mei',      text: "(Checks the bag, not what she wants)" },
-                { speaker: 'Mei',      text: "Thanks... I don't have much of an appetite right now, but I appreciate the thought." },
-                { speaker: 'Mei',      text: "I think I just want to be alone for a bit. Maybe I'll eat later." },
-                { speaker: 'EECS Boy', text: "Sorry to bother you. I'll try again!" },
-                { speaker: 'Niu Pai',  text: "*WOOF.* (Translation: 'Back to the food court, let's try again!')" },
-                { speaker: 'Narrator', text: "You didn't win the game, but you didn't lose heart either. Try again!" },
+                { speaker: 'Niu Pai',  text: "*sniff sniff... whine.* (Translation: 'That's... not the right order, human. This will not do.')" },
+                { speaker: 'EECS Boy', text: "Wrong order?! After all that running?? ...Okay. Okay. We're going back in." },
+                { speaker: 'Niu Pai',  text: "Woof woof! (Translation: 'Correct attitude. Back to the counter — nobody out-orders us.')" },
             ],
         },
         niupai_post_win: {
             lines: [
-                { speaker: 'EECS Boy',    text: "Order secured, dignity mostly intact. All yours, girl — fresh off the XCB grill." },
-                { speaker: 'Niu Pai',     text: "*demolishes it in four seconds flat, then plants herself at your side like she's been assigned to you by destiny*" },
-                { speaker: 'Stall Owner', text: "Ha! She's chosen you, kid. Niu Pai goes where YOU go now — loyalty like that, you can't buy." },
-                { speaker: 'EECS Boy',    text: "(Came to campus chasing a girl, leaving with a dog. Honestly? Great trade.) Two of Mei's favorites won over — let's move, partner." },
+                { speaker: 'EECS Boy', text: "We did it! Right order secured, Black Dogs outsmarted, dignity mostly intact." },
+                { speaker: 'Niu Pai',  text: "WOOF WOOF! (Translation: 'You order like a champion, human. I am impressed.')" },
+                { speaker: 'EECS Boy', text: "(Headpat) Good girl. Couldn't have done it without you." },
+                { speaker: 'Niu Pai',  text: "*plants herself at your side* Woof. (Translation: 'I'm coming with you. Forever. This is not negotiable.')" },
+                { speaker: 'EECS Boy', text: "(Came to campus chasing a girl, leaving with a dog. Honestly? Great trade.) Let's go, partner." },
             ],
         },
         niupai_post_lose: {
             lines: [
-                { speaker: 'Stall Owner', text: "Oof — the strays got the food AND your pride. Niu Pai's not sold on you yet, but she's watching." },
-                { speaker: 'EECS Boy',    text: "(Beaten by gravity, gravy, and three feral dogs. Running it back — nobody out-orders me.)" },
+                { speaker: 'EECS Boy', text: "Ow... okay. The Black Dogs win this round." },
+                { speaker: 'Niu Pai',  text: "*whine...* (Translation: 'You okay, human? We'll get them next time.')" },
+                { speaker: 'EECS Boy', text: "(Beaten by gravity, gravy, and a gang of feral dogs. Running it back — nobody out-orders me.)" },
             ],
         },
         niupai_done: {
