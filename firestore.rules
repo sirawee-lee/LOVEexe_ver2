@@ -1,0 +1,42 @@
+rules_version = '2';
+
+// LOVE.EXE game backend — username/password accounts WITHOUT Firebase Auth
+// (class project; the client sends a SHA-256 password hash with each write
+// and rules verify it against the account doc, so players can't overwrite
+// each other's saves or leaderboard rows).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Account docs: id = lowercase username.
+    // { name, pass (sha256 hex), created }
+    match /users/{uname} {
+      allow get: if true;          // login = fetch + compare hash client-side
+      allow list: if false;
+      allow create: if request.resource.data.keys().hasAll(['name', 'pass'])
+                    && request.resource.data.pass is string
+                    && request.resource.data.pass.size() == 64
+                    && uname.size() >= 2 && uname.size() <= 20;
+      allow update, delete: if false;
+    }
+
+    // Cloud saves: id = lowercase username. Write must prove the password.
+    // { state (json string), pass, updated }
+    match /saves/{uname} {
+      allow read: if true;
+      allow write: if request.resource.data.pass ==
+                      get(/databases/$(database)/documents/users/$(uname)).data.pass;
+    }
+
+    // Global leaderboard: id = lowercase username, one best row per player.
+    // { name, total, scores, updated, pass }
+    match /leaderboard/{uname} {
+      allow read: if true;
+      allow write: if request.resource.data.pass ==
+                      get(/databases/$(database)/documents/users/$(uname)).data.pass;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

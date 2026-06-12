@@ -226,6 +226,10 @@ cc.Class({
             self._dogAnim = dAnim;
             // Hidden until Niu Pai is rescued at XCB; then she follows.
             dNode.active = StoryState.dogJoined;
+            // Resuming a save where the dog already joined: the static niupai NPC
+            // must vanish too (normally done by the join transition, which a
+            // CONTINUE skips) — otherwise both dogs are on the map at once.
+            if (StoryState.dogJoined) self._hideNpc('niupai');
         }
 
         // ── UI layer (fixed — doesn't scroll) ──

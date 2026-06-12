@@ -14,6 +14,7 @@ var StoryState   = require('StoryState');
 var GameFlow     = require('GameFlow');      // the 5-game boss rush (scene-flow module)
 var EndingScreen = require('EndingScreen');  // game-over / finale overlays
 var ScreenTransition = require('ScreenTransition');
+var Account      = require('Account');       // cloud save after every recorded result
 
 // XiaoChiBu.fire is now fully wired (NiuPaiMinigame component + assets), pulled from
 // the XiaoChiBu_Game branch — so the Niu Pai NPC launches the REAL dog minigame as
@@ -74,6 +75,7 @@ cc.Class({
                     if (StoryState.recordFail(r.key)) { EndingScreen.showGameOver(); return; }
                     self._dm.play(r.key + '_post_lose');
                 }
+                Account.saveProgress();   // checkpoint: scene-minigame result recorded
             } else if (StoryState.finalCleared && !StoryState.flags.endingShown) {
                 StoryState.flags.endingShown = true;
                 self._dm.play('mei_after');         // finale payoff after the boss returns
@@ -122,6 +124,7 @@ cc.Class({
             }, function () {
                 self._say('niupai_post_mei_wrong', function () {
                     self._setNiuPaiCompanionJoined(false);
+                    Account.saveProgress();   // re-checkpoint: the cutscene dog has left again
                 });
             });
         });
@@ -197,6 +200,7 @@ cc.Class({
                         if (StoryState.recordFail(key)) { EndingScreen.showGameOver(); return; }
                         self._say(loseId);
                     }
+                    Account.saveProgress();   // checkpoint: node-minigame result recorded
                 });
             });
         });
@@ -327,5 +331,6 @@ cc.Class({
     _feedDog: function () {
         StoryState.dogFeeds++;
         this._say(StoryState.dogFeeds <= 1 ? 'dog_feed_first' : 'dog_feed_again');
+        Account.saveProgress();   // dogFeeds counts toward the easter-egg ending
     },
 });

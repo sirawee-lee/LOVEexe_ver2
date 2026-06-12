@@ -13,6 +13,7 @@
 var StoryState   = require('StoryState');
 var DialogueData = require('DialogueData');
 var PixelFont    = require('PixelFont');   // VT323 8-bit font for all dialogue text
+var ParticleFX   = require('ParticleFX');  // floating hearts when a choice raises affinity
 
 var ST = { IDLE: 0, TYPING: 1, WAIT_ADVANCE: 2, WAIT_CHOICE: 3 };
 
@@ -364,6 +365,9 @@ cc.Class({
     _onChoice: function (choice, idx) {
         if (this.sfxChoice) cc.audioEngine.play(this.sfxChoice, false, 0.7);
         StoryState.addAffinity(choice.affinityDelta || 0);
+        if ((choice.affinityDelta || 0) > 0) {
+            ParticleFX.hearts(this.node, 0, 40);   // 💗 affinity went up
+        }
         StoryState.choices[this._curId] = (choice.index != null) ? choice.index : idx;
         this._clearChoices();
         this._catcher.active = true;

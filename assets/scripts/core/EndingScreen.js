@@ -16,6 +16,8 @@
 
 var StoryState = require('StoryState');
 var PixelFont  = require('PixelFont');   // VT323 8-bit font (matches the rest of the game)
+var ParticleFX = require('ParticleFX');  // celebration confetti on the win screens
+var Account    = require('Account');     // global leaderboard + cloud-save lifecycle
 
 // ── palette ───────────────────────────────────────────────
 var COL_BLACK   = cc.color(8, 6, 12, 255);
@@ -35,6 +37,8 @@ var EndingScreen = {
     // 3 hearts gone in the overworld (osu / typing / niupai failures).
     showGameOver: function () {
         StoryState.dialogueActive = true;   // freeze the overworld underneath
+        this._playBgm('bgm_tense', true);   // somber game-over music
+        Account.clearSave();                // the run is dead — nothing to CONTINUE
         var self = this;
         this._imageScreen({
             image: 'game_over_screen',
@@ -51,6 +55,7 @@ var EndingScreen = {
     // Lost the final boss (boss love meter hit 0) -> EECS overload ending.
     showBossLose: function () {
         cc.audioEngine.stopMusic();   // stop the boss BGM so it doesn't bleed into the ending
+        this._playBgm('bgm_tense', true);   // tense "EECS overload" ending music
         StoryState.dialogueActive = true;
         var self = this;
         this._imageScreen({
@@ -74,26 +79,119 @@ var EndingScreen = {
         this._showChoice();
     },
 
-    // ── the girl / dog choice (black screen) ──────────────
+    // Play an ending BGM by name from resources/audio (loops). `force` restarts
+    // even if it's the same track; without it, re-entering a screen (e.g. back
+    // from Leaderboard/Credits) keeps the music playing instead of restarting it.
+    _playBgm: function (name, force) {
+        if (!force && this._bgmName === name) return;
+        this._bgmName = name;
+        var self = this;
+        cc.resources.load('audio/' + name, cc.AudioClip, function (err, clip) {
+            if (err || !clip || self._bgmName !== name) return;   // superseded / failed
+            try { cc.audioEngine.stopMusic(); cc.audioEngine.playMusic(clip, true); } catch (e) {}
+        });
+    },
+
+    // Puppy "yips" sprinkled on a ~3s rhythm over the dog-ending music. Tied to
+    // the current overlay node, so it stops automatically when the screen changes.
+    _startBarkRhythm: function () {
+        var node = this._overlay;
+        if (!node || !cc.isValid(node)) return;
+        cc.resources.load('audio/sfx_puppy_bark', cc.AudioClip, function (err, clip) {
+            if (err || !clip || !cc.isValid(node)) return;
+            var yip = function () {
+                if (!cc.isValid(node)) return;
+                var id = cc.audioEngine.playEffect(clip, false);
+                try { cc.audioEngine.setVolume(id, 0.55); } catch (e) {}
+            };
+            // bark 3 times, well spaced (the clip is ~6s), then stop — no endless barking
+            yip();
+            cc.tween(node).delay(9).call(yip).delay(9).call(yip).start();
+        });
+    },
+
+    // Big white "THANKS FOR PLAYING!" typed across the centre of the ending art,
+    // finishing in ~8s. A dark drop-shadow copy keeps it readable over any artwork.
+    _typeThanks: function (str) {
+        var root = this._overlay;
+        if (!root || !cc.isValid(root)) return;
+        var W = cc.view.getVisibleSize().width;
+
+        var mk = function (color, dx, dy, z) {
+            var n = new cc.Node('thanks');
+            n.parent = root;
+            n.zIndex = z;
+            n.setPosition(dx, 30 + dy);
+            var l = n.addComponent(cc.Label);
+            l.fontSize = 58; l.lineHeight = 70;
+            l.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+            l.overflow = cc.Label.Overflow.RESIZE_HEIGHT;
+            l.enableWrapText = true;
+            n.width = W - 120;
+            n.color = color;
+            PixelFont.apply(l);
+            return l;
+        };
+        var shadow = mk(cc.color(0, 0, 0), 4, -4, 249999);
+        var main   = mk(cc.color(255, 255, 255), 0, 0, 250000);
+
+        var interval = 8 / Math.max(1, str.length);
+        shadow.string = ''; main.string = '';
+        var t = cc.tween(main.node);
+        for (var i = 1; i <= str.length; i++) {
+            (function (n) {
+                t = t.delay(interval).call(function () {
+                    var s = str.substr(0, n);
+                    if (cc.isValid(main.node)) main.string = s;
+                    if (cc.isValid(shadow.node)) shadow.string = s;
+                });
+            })(i);
+        }
+        t.start();
+    },
+
+    // ── the girl / dog choice (full-screen choice artwork) ──
     _showChoice: function () {
         var self = this;
+        this._playBgm('bgm_levelclear', true);   // upbeat level-clear jingle on "YOU DID IT!"
         var root = this._root(COL_BLACK);
         var vs = cc.view.getVisibleSize();
-        var H = vs.height;
+        var W = vs.width, H = vs.height;
 
-        this._label(root, "YOU DID IT!", 56, COL_GOLD, 0, H / 2 - 130);
-        this._label(root, "Your campus days are over. Who will you\nspend the rest of them with?", 26, COL_TEXT, 0, H / 2 - 215);
-        this._label(root, "Total score   " + StoryState.totalScore(), 24, cc.color(180, 200, 255), 0, 60);
+        // The choice art (girl asking you out on the left, dog with the ultimate
+        // puppy eyes on the right) carries its own situation text, so nothing is
+        // drawn over it. 4:3 picture, contain-fit (canvas is Fit-Height).
+        var AR = 1448 / 1086;
+        var artW = Math.min(W, H * AR);
+        var artNode = new cc.Node('art');
+        artNode.parent = root;
+        var spr = artNode.addComponent(cc.Sprite);
+        spr.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        spr.trim = false;
+        artNode.setContentSize(artW, artW / AR);
+        artNode.setPosition(0, 0);
+        this._loadImage('ending_niupai_3', function (sf) {
+            if (!cc.isValid(artNode)) return;
+            if (sf) { spr.spriteFrame = sf; return; }
+            // art missing → fall back to the old text-only choice screen
+            if (!cc.isValid(root)) return;
+            self._label(root, "YOU DID IT!", 56, COL_GOLD, 0, H / 2 - 130);
+            self._label(root, "Your campus days are over. Who will you\nspend the rest of them with?", 26, COL_TEXT, 0, H / 2 - 215);
+            self._label(root, "Total score   " + StoryState.totalScore(), 24, cc.color(180, 200, 255), 0, 60);
+        });
 
-        // two big choice buttons
-        this._button(root, '💛  Mei', -170, -90, 280, 96, COL_PINK, COL_PINK_HI, function () {
+        // choice buttons sit on the empty wooden strip along the art's bottom
+        // edge (the space left in the picture), so they never cover the scene
+        this._button(root, '💛  Mei', -170, -H / 2 + 36, 300, 52, COL_PINK, COL_PINK_HI, function () {
             StoryState.endingRoute = 'true_love';
             self._showFinale('true_love');
         });
-        this._button(root, '🐾  Niu Pai', 170, -90, 280, 96, cc.color(150, 110, 70), cc.color(195, 150, 100), function () {
+        this._button(root, '🐾  Niu Pai', 170, -H / 2 + 36, 300, 52, cc.color(150, 110, 70), cc.color(195, 150, 100), function () {
             StoryState.endingRoute = 'niupai';
             self._showFinale('niupai');
         });
+
+        ParticleFX.confetti(this._overlay, vs.width, vs.height);   // 🎉 "YOU DID IT!" celebration
     },
 
     // ── the chosen finale: ending art + Leaderboard / Credits / Exit ──
@@ -102,46 +200,83 @@ var EndingScreen = {
         var image = route === 'niupai' ? 'ending_niupai_1' : 'ending_true_love_1';
         var title = route === 'niupai' ? 'NIU PAI ENDING' : 'TRUE LOVE ENDING';
 
-        // record this winning run on the leaderboard exactly once — never in Hero Mode
+        // record this winning run exactly once — never for a run that used Hero Mode
         if (!this._recorded) {
             this._recorded = true;
-            if (!StoryState.heroMode) this._addBoard(StoryState.totalScore(), route);
+            if (!StoryState.heroMode && !StoryState.usedHero) {
+                if (Account.isLoggedIn()) Account.submitScore(route);  // global board (combined total, best run kept)
+                else this._addBoard(StoryState.totalScore(), route);   // guest → this device only
+            }
+            Account.clearSave();   // the run is finished — nothing left to CONTINUE
         }
 
         this._imageScreen({
             image: image,
             fallbackColor: route === 'niupai' ? cc.color(20, 16, 30) : cc.color(40, 16, 26),
             fallbackTitle: title,
-            subtitle: StoryState.heroMode ? 'HERO MODE — not ranked' : ('Final score   ' + StoryState.totalScore()),
+            subtitle: (StoryState.heroMode || StoryState.usedHero) ? 'HERO MODE — not ranked' : ('Final score   ' + StoryState.totalScore()),
             buttons: [
                 { text: 'Leaderboard', color: COL_PINK, hi: COL_PINK_HI, onClick: function () { self._showLeaderboard(function () { self._showFinale(route); }); } },
                 { text: 'Credits',     color: COL_GREY, hi: COL_GREY_HI, onClick: function () { self._showCredits(function () { self._showFinale(route); }); } },
                 { text: 'Exit',        color: COL_GREY, hi: COL_GREY_HI, onClick: function () { self._exit(); } },
             ],
         });
+
+        var vs = cc.view.getVisibleSize();
+        if (route === 'niupai') {
+            ParticleFX.niupaiEnding(this._overlay, vs.width, vs.height);   // 🦴 bones + 💗 hearts
+            this._playBgm('bgm_niupai');                                   // gentle ukulele bed
+            this._startBarkRhythm();                                       // 🐶 3 spaced puppy yips, then quiet
+        } else {
+            ParticleFX.sakura(this._overlay, vs.width, vs.height);         // 🌸 cute sakura (happy ending)
+            this._playBgm('bgm_romance');                                  // romantic true-love track
+        }
+
+        // big white "THANKS FOR PLAYING!" typed across the centre (~8s)
+        this._typeThanks(route === 'niupai'
+            ? 'THANKS FOR PLAYING!  (EASTER EGG!)'
+            : 'THANKS FOR PLAYING!');
     },
 
-    // ── leaderboard screen (Back returns to caller) ───────
+    // ── leaderboard screen (global top-10, Back returns to caller) ───────
     _showLeaderboard: function (backFn) {
+        var self = this;
         var root = this._root(cc.color(14, 12, 22, 255));
         var vs = cc.view.getVisibleSize();
         var H = vs.height;
 
         this._label(root, "🏆  LEADERBOARD", 44, COL_GOLD, 0, H / 2 - 90);
+        var loading = this._label(root, "Loading…", 24, COL_TEXT, 0, 20);
 
-        var board = this._loadBoard();
-        if (!board.length) {
-            this._label(root, "No scores yet — be the first!", 26, COL_TEXT, 0, 20);
-        } else {
-            var top = H / 2 - 175;
-            for (var i = 0; i < board.length && i < 8; i++) {
-                var e = board[i];
-                var tag = e.route === 'niupai' ? '🐾' : '💛';
-                var row = (i + 1) + '.   ' + e.score + '   ' + tag;
-                var col = i === 0 ? COL_GOLD : COL_TEXT;
-                this._label(root, row, 28, col, 0, top - i * 44);
+        var renderRows = function (rows, isGlobal) {
+            if (!cc.isValid(root) || root !== self._overlay) return;   // screen already changed
+            if (cc.isValid(loading.node)) loading.node.destroy();
+            if (!rows.length) {
+                self._label(root, "No scores yet — be the first!", 26, COL_TEXT, 0, 20);
+            } else {
+                var top = H / 2 - 175;
+                for (var i = 0; i < rows.length && i < 8; i++) {
+                    var e = rows[i];
+                    var tag = e.route === 'niupai' ? '🐾' : '💛';
+                    var row = (i + 1) + '.  ' + e.name + '   ' + e.total + '   ' + tag;
+                    var col = i === 0 ? COL_GOLD : COL_TEXT;
+                    if (Account.user && String(e.name).toLowerCase() === Account.user) col = cc.color(140, 255, 170);
+                    self._label(root, row, 26, col, 0, top - i * 44);
+                }
             }
-        }
+            if (!isGlobal) self._label(root, "(offline — scores on this device only)", 16, COL_GREY_HI, 0, -H / 2 + 130);
+        };
+
+        // global board: every player's best COMBINED total (all games summed).
+        // If the server is unreachable, fall back to this device's local list.
+        Account.fetchLeaderboard(function (err, rows) {
+            if (!err) { renderRows(rows, true); return; }
+            var local = self._loadBoard().map(function (e) {
+                return { name: 'YOU', total: e.score, route: e.route };
+            });
+            renderRows(local, false);
+        });
+
         this._button(root, '◀ Back', 0, -H / 2 + 70, 220, 76, COL_GREY, COL_GREY_HI, backFn);
     },
 

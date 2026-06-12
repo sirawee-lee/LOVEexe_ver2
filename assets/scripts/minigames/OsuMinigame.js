@@ -12,6 +12,7 @@ var NOTE_INTERVAL = 550;   // ms ≈ 109 BPM (CPR rate: 100-120/min)
 var NOTE_MARGIN   = 80;    // keep notes away from canvas edges
 
 var PixelFont = require('PixelFont');   // VT323 8-bit font for all the game's text
+var ParticleFX = require('ParticleFX'); // gold sparkle pop on a clean hit
 
 cc.Class({
     extends: cc.Component,
@@ -247,10 +248,12 @@ cc.Class({
             self._hits++; self._combo++;
             self._score += 300 * Math.max(1, Math.floor(self._combo / 5));
             self._flashJudge('♥ PERFECT!', cc.color(255, 105, 180), note.x, note.y);
+            ParticleFX.sparkle(self.node, note.x, note.y);   // ✨ on a clean hit
         } else if (diff <= GOOD_WIN) {
             self._hits++; self._combo++;
             self._score += 150 * Math.max(1, Math.floor(self._combo / 5));
             self._flashJudge('GOOD', cc.color(255, 221, 68), note.x, note.y);
+            ParticleFX.sparkle(self.node, note.x, note.y);   // ✨ on a clean hit
         } else {
             self._misses++; self._combo = 0;
             self._flashJudge('MISS', cc.color(204, 68, 68), note.x, note.y);

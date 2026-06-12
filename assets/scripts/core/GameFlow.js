@@ -38,6 +38,15 @@ require('PauseMenu');                            // global ESC pause menu (idemp
 const SEQUENCE = ['needle', 'counterGame', 'dontPress', 'flappy1', 'runner'];
 const MAX_LOVE = 3;            // 3 hearts = 100% (each heart = 1/3)
 
+// pretty names shown on the "ROUND x / 5" interstitial card between boss games
+const NICE_NAME = {
+    needle:      'Thread the Needle',
+    counterGame: 'Counting',
+    dontPress:   "Don't Press",
+    flappy1:     'Flappy',
+    runner:      'Race',
+};
+
 // ---- Scoring economy (tune these freely) ------------------------------------
 // Final score = sum over cleared games of (points earned inside it + CLEAR_BONUS)
 //               + (hearts still left at the very end) * HEART_POINTS.
@@ -127,7 +136,7 @@ const GameFlow = {
             return;
         }
         this.currentIndex++;
-        this._loadScene(this.sequence[this.currentIndex]);
+        this._transitionToNext(this.sequence[this.currentIndex]);   // "ROUND x / 5" card between games
     },
 
     // All 5 games cleared: add the heart bonus, fold the boss total into the
@@ -151,7 +160,7 @@ const GameFlow = {
         this.scores = {};
         this.currentIndex = 0;
         this._busy = false;
-        this._loadScene(this.sequence[0]);
+        this._transitionToNext(this.sequence[0]);   // open the boss rush with "ROUND 1 / 5"
     },
 
     // Final win (from the score-summary "Next ▶") -> the romance finale:
@@ -202,6 +211,35 @@ const GameFlow = {
 
     _loadScene(name) {
         this._fadeOut(() => cc.director.loadScene(name));
+    },
+
+    // ---- Boss-rush interstitial: fade to black, announce "ROUND x / 5 + game",
+    // hold a beat, then load. The next scene's _fadeIn() takes over from black so
+    // the whole hand-off reads as one continuous transition. ---------------------
+    _transitionToNext(name) {
+        const cover = this._fadeCover(0);
+        if (!cover) { cc.director.loadScene(name); return; }
+        cover.on(cc.Node.EventType.TOUCH_START, () => {}, this);   // swallow taps during the card
+
+        const round = this.sequence.indexOf(name) + 1;
+        const nice  = NICE_NAME[name] || name;
+
+        const sub   = this._makeLabel(cover, 'ROUND ' + round + ' / ' + this.sequence.length, 30, COL_GOLD, 0, 50);
+        const title = this._makeLabel(cover, nice, 64, cc.color(255, 255, 255), 0, -14);
+        const heart = this._makeLabel(cover, '♥', 38, COL_HEART, 0, -88);
+        [sub, title, heart].forEach((l) => { l.node.opacity = 0; });
+
+        cc.tween(cover)
+            .to(0.3, { opacity: 255 })                 // dip to black
+            .call(() => {                              // pop the card in
+                [sub, title, heart].forEach((l) => {
+                    l.node.scale = 0.85;
+                    cc.tween(l.node).to(0.25, { opacity: 255, scale: 1 }, { easing: 'backOut' }).start();
+                });
+            })
+            .delay(3.0)                                // let the player read it
+            .call(() => cc.director.loadScene(name))   // new scene fades in from black
+            .start();
     },
 
     // ---- Scene-transition fade + heart-loss juice ----------------------------
