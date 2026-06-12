@@ -4,6 +4,9 @@ var DialogueType = {
     IntroControls: 'intro_controls',
     TunnelIntro: 'tunnel_intro',
     TunnelExitNoFood: 'tunnel_exit_no_food',
+    TrollTeleport: 'troll_teleport',
+    ExitPreResult: 'exit_pre_result',
+    ExitResultSummary: 'exit_result_summary',
 };
 
 var DialogueContent = {};
@@ -23,6 +26,26 @@ DialogueContent[DialogueType.TunnelIntro] = {
 DialogueContent[DialogueType.TunnelExitNoFood] = {
     text: "Oh shit, I didn't brought any food for Mei...",
     confirmText: '[E] Continue',
+};
+DialogueContent[DialogueType.TrollTeleport] = {
+    text: 'wtf?',
+    confirmText: '[E] Continue',
+};
+DialogueContent[DialogueType.ExitPreResult] = {
+    pages: [
+        '(MC Opened the door, light went in)',
+        'Oh my god, this is actually the exit?',
+        'Still don\'t understand why I get into here...',
+        'But at least I made it out safely :)',
+    ],
+    confirmText: '[E] Continue',
+    finalConfirmText: '[E] Continue',
+};
+DialogueContent[DialogueType.ExitResultSummary] = {
+    text: '',
+    confirmText: '[E] Confirm',
+    panelWidth: 460,
+    panelHeight: 190,
 };
 DialogueContent.OrderFlow = {
     askOrder: {
@@ -194,11 +217,11 @@ var NPDialogue = cc.Class({
         root.addChild(bg, 0);
         this._bg = bg;
 
-        this._textLabel = this._createLabel('DialogueText', '', 16, cc.Color.BLACK);
+        this._textLabel = this._createLabel('DialogueText', '', 20, cc.Color.BLACK);
         this._textLabel.getComponent(cc.Label).horizontalAlign = cc.Label.HorizontalAlign.LEFT;
         root.addChild(this._textLabel, 1);
 
-        this._confirmLabel = this._createLabel('ConfirmText', '', 16, cc.color(155, 145, 30));
+        this._confirmLabel = this._createLabel('ConfirmText', '', 20, cc.color(155, 145, 30));
         root.addChild(this._confirmLabel, 1);
     },
 
@@ -273,8 +296,14 @@ var NPDialogue = cc.Class({
         var zoom = camera ? (camera.zoomRatio || 1) : 1;
         var viewW = cameraUi ? cc.winSize.width : cc.winSize.width / zoom;
         var viewH = cameraUi ? cc.winSize.height : cc.winSize.height / zoom;
-        var width = Math.min(Math.max(220, viewW - 80), this.game ? (this.game.dialoguePanelWidth || 420) : 420);
-        var height = this.game ? (this.game.dialoguePanelHeight || 150) : 150;
+        var content = this._getContent(this.activeType);
+        var widthLimit = content && content.panelWidth
+            ? content.panelWidth
+            : (this.game ? (this.game.dialoguePanelWidth || 420) : 420);
+        var width = Math.min(Math.max(220, viewW - 80), widthLimit);
+        var height = content && content.panelHeight
+            ? content.panelHeight
+            : (this.game ? (this.game.dialoguePanelHeight || 150) : 150);
         var y = Math.min(viewH / 2 - height / 2 - 28, 86);
 
         this._bg.setPosition(0, y);
