@@ -117,59 +117,20 @@ module.exports = {
         // ── Niu Pai (XCB food stall) → market dash (placeholder) ──
         niupai_pre_mei: {
             lines: [
-                {
-                    speaker: 'Narrator',
-                    text: 'The algorithm exam at noon was the hardest one anyone had ever seen. It even ran almost an hour late before it finally ended.'
-                },
-                {
-                    speaker: 'Narrator',
-                    text: 'Everyone left the classroom with heavy hearts.'
-                },
-                {
-                    speaker: 'EECS Boy',
-                    text: '...'
-                },
-                {
-                    speaker: 'Narrator',
-                    text: 'EECS Boy notices Mei lying face-down on her desk, completely drained.'
-                },
-                {
-                    speaker: 'EECS Boy',
-                    text: 'She probably messed up the exam...'
-                },
-                {
-                    speaker: "Mei's Friend",
-                    text: "She doesn't want to leave... Lunch break ended a long time ago, too. This really isn't good."
-                },
-                {
-                    speaker: 'Narrator',
-                    text: 'EECS Boy remembers how Mei once helped him find his missing OS assignment.'
-                },
-                {
-                    speaker: 'Narrator',
-                    text: 'He decides that now, it is his turn to cheer her up.'
-                },
-                {
-                    speaker: 'EECS Boy',
-                    text: 'I can go buy her something to eat...'
-                },
-                {
-                    speaker: "Mei's Friend",
-                    text: 'Who are you?'
-                },
-                {
-                    speaker: 'EECS Boy',
-                    text: "I'm her friend. Do you know what Mei likes?"
-                },
-                {
-                    speaker: "Mei's Friend",
-                    text: "Hmm... She likes things that are sweet and smell nice... Food that makes you feel warm when you eat it."
-                },
-                {
-                    speaker: 'EECS Boy',
-                    text: 'Got it!'
-                }
-            ]
+                { speaker: 'Narrator',     text: 'The algorithm exam at noon was the hardest one anyone had ever seen. It even ran almost an hour late before it finally ended.' },
+                { speaker: 'Narrator',     text: 'Everyone left the classroom with heavy hearts.' },
+                { speaker: 'EECS Boy',     text: '...' },
+                { speaker: 'Narrator',     text: 'EECS Boy notices Mei lying face-down on her desk, completely drained.' },
+                { speaker: 'EECS Boy',     text: 'She probably messed up the exam...' },
+                { speaker: "Mei's Friend", text: "She doesn't want to leave... Lunch break ended a long time ago, too. This really isn't good." },
+                { speaker: 'Narrator',     text: 'EECS Boy remembers how Mei once helped him find his missing OS assignment.' },
+                { speaker: 'Narrator',     text: 'He decides that now, it is his turn to cheer her up.' },
+                { speaker: 'EECS Boy',     text: 'I can go buy her something to eat...' },
+                { speaker: "Mei's Friend", text: 'Who are you?' },
+                { speaker: 'EECS Boy',     text: "I'm her friend. (BS) Do you know what Mei likes?" },
+                { speaker: "Mei's Friend", text: "Hmm... She likes things that are sweet and smell nice... Food that makes you feel warm when you eat it." },
+                { speaker: 'EECS Boy',     text: 'Got it!' },
+            ],
         },
         niupai_pre_game: {
             lines: [
@@ -299,51 +260,31 @@ module.exports = {
         niupai_post_mei_wrong: {
             // incorrect food, niupai go back XCB to wait for you.
             lines: [
+                { speaker: 'Narrator', text: "EECS peeked through the window, Mei was still there but her friend was gone." },
+                { speaker: 'EECS Boy', text: "(Opened the door, went to her seat)" },
+                { speaker: 'EECS Boy', text: "Hello... I brought you something to eat. I hope it's what you like." },
+                { speaker: 'Mei',      text: "Ok... But why?" },
+                { speaker: 'EECS Boy', text: "I know you had a tough exam today... I just wanted to cheer you up. I hope this helps." },
+                { speaker: 'Mei',      text: "(Checks the bag, not what she wants)" },
+                { speaker: 'Mei',      text: "Thanks... I don't have much of an appetite right now, but I appreciate the thought." },
+                { speaker: 'Mei',      text: "I think I just want to be alone for a bit. Maybe I'll eat later." },
+                { speaker: 'EECS Boy', text: "Sorry to bother you. I'll try again!" },
+                { speaker: 'Niu Pai',  text: "*WOOF.* (Translation: 'Back to the food court, let's try again!')" },
                 { 
-                    speaker: 'Narator', 
-                    text: "EECS peeked through the window, Mei was still there but her friend was gone."
+                    speaker: 'Narrator', text: "You didn't win the game, but you didn't lose heart either. Try again!" ,
+                    choices: [
+                        {text: 'Never Give Up!', affinityDelta: 0, tone: "pink"}
+                    ]
                 },
-                { 
-                    speaker: 'EECS boy', 
-                    text: "(Opened the door, went to her seat)"
-                },
-                { 
-                    speaker: 'EECS boy', 
-                    text: "Hello... I brought you something to eat. I hope it's what you like."
-                },
-                { 
-                    speaker: 'Mei', 
-                    text: "Ok... But why?" 
-                },
-                {
-                    speaker: 'EECS Boy',
-                    text: "I know you had a tough exam today... I just wanted to cheer you up. I hope this helps."
-                },
-                {
-                    speaker: 'Mei',
-                    text: "(Checks the bag, not what she wants)"
-                },
-                {
-                    speaker: 'Mei',
-                    text: "Thanks... I don't have much of an appetite right now, but I appreciate the thought."
-                },
-                {
-                    speaker: 'Mei',
-                    text: "I think I just want to be alone for a bit. Maybe I'll eat later."
-                },
-                {
-                    speaker: 'EECS Boy',
-                    text: "Sorry to bother you. I'll try again!"
-                },
-                {
-                    speaker: 'Niu Pai',
-                    text: "*WOOF.* (Translation: 'Back to the food court, let's try again!')"
-                },
-                {
-                    speaker: 'Narrator',
-                    text: "You didn't win the game, but you didn't lose heart either. Try again!"
-                }
-            ]
+            ],
+        },
+        niupai_post_win: {
+            lines: [
+                { speaker: 'EECS Boy',    text: "Order secured, dignity mostly intact. All yours, girl — fresh off the XCB grill." },
+                { speaker: 'Niu Pai',     text: "*demolishes it in four seconds flat, then plants herself at your side like she's been assigned to you by destiny*" },
+                { speaker: 'Stall Owner', text: "Ha! She's chosen you, kid. Niu Pai goes where YOU go now — loyalty like that, you can't buy." },
+                { speaker: 'EECS Boy',    text: "(Came to campus chasing a girl, leaving with a dog. Honestly? Great trade.) Two of Mei's favorites won over — let's move, partner." },
+            ],
         },
         niupai_post_lose: {
             // player / niupai defeated.

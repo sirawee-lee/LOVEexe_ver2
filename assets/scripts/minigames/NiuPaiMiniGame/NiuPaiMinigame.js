@@ -31,7 +31,6 @@ cc.Class({
         debugImmediateResult: { default: false },
         debugImmediateResultType: { default: DebugImmediateResultType.Win, type: DebugImmediateResultType },
         debugDisableInitialObstacles: { default: false },
-        debugDrawTrollTeleport: { default: false },
         sfxCorrect: { default: null, type: cc.AudioClip },
         sfxWrong:   { default: null, type: cc.AudioClip },
         sfxNotification: { default: null, type: cc.AudioClip },
@@ -145,6 +144,7 @@ cc.Class({
         this._walletNoticeCooldown = 0;
         this._shownWalletPickupNotification = false;
         this._walletPickupCount = 0;
+        this._obstacleBumpSfxCooldownTimer = 0;
         this._world = null;
         this._mainTiledMap = null;
         this._tunnelTiledMap = null;
@@ -221,7 +221,6 @@ cc.Class({
         this._dialogueHidesHud = false;
         this._introDialogOpen = false;
         this._shownTunnelIntroDialogue = false;
-        this._shownTrollTeleportDialogue = false;
         this._hasEnteredTunnelSection = false;
         this._shownItemNotifications = {};
         this._shownNormieBumpNotification = false;
@@ -303,6 +302,7 @@ cc.Class({
         this._walletPlayerDropCooldownTimer = 0;
         this._walletNoticeCooldown = 0;
         this._walletPickupCount = 0;
+        this._obstacleBumpSfxCooldownTimer = 0;
         this._wallets = [];
         this._shownWalletPickupNotification = false;
         this._currentSection = 'main';
@@ -315,7 +315,6 @@ cc.Class({
         this._introDialogOpen = false;
         this._playerNormieSlowTimer = 0;
         this._shownTunnelIntroDialogue = false;
-        this._shownTrollTeleportDialogue = false;
         this._heldItem = null;
         this._foodSpoilTime = this.spoilDuration;
         this._shownItemNotifications = {};
@@ -1052,7 +1051,6 @@ cc.Class({
         this._clampPlayerToMap();
         this._checkTunnelEntrance();
         this._checkTunnelReturnEntrance();
-        this._checkTunnelTrollTeleport();
         this._checkTunnelExit();
         this._updateOrderTrigger();
     },
@@ -1170,7 +1168,7 @@ cc.Class({
         if (keyCode === cc.macro.KEY.r) {
             if (this._orderBackHeld) return;
             this._orderBackHeld = true;
-            this._goBackOrderState();
+            this._closeOrderDialog();
             return;
         }
 
@@ -1297,6 +1295,7 @@ cc.Class({
                 this._niuPaiControl.setHeldItem(item);
             }
             if (this._blackDogControl) this._blackDogControl.startRobbingNiuPai();
+            this._clearNotifications();
             this._showPersistentNotification(NPNotification.Type.NiuPaiOrderDone);
         }
         else if(actorType === 'player') {
@@ -1713,24 +1712,6 @@ cc.Class({
         }
     },
 
-    _showFirstTrollTeleportDialogue: function () {
-        if (this._shownTrollTeleportDialogue) return;
-
-        var self = this;
-        this._shownTrollTeleportDialogue = true;
-        this._ensureDialogueControl();
-        this._keys = {};
-        this._stopAllActorMovement();
-        if (this._dialogueControl) {
-            if (!this._dialogueControl.show(NPDialogue.Type.TrollTeleport, function () {
-                self._resumeAfterDialogue();
-            })) {
-                self._resumeAfterDialogue();
-            }
-        } else {
-            this._resumeAfterDialogue();
-        }
-    },
 
     _showNotification: function (type, duration) {
         this._ensureNotificationControl();
@@ -1752,33 +1733,64 @@ cc.Class({
         if (this._notificationControl) this._notificationControl.dismissType(type);
     },
 
-    _showFirstItemNotification: function (item) {
+    _clearNotifications: function () {
+        if (this._notificationControl) this._notificationControl.clear();
+    },
+
+    _showFirstItemDialogue: function (item) {
         if (!item) return;
         if (!this._shownItemNotifications) this._shownItemNotifications = {};
         if (this._shownItemNotifications[item]) return;
 
         this._shownItemNotifications[item] = true;
-        var type = this._getFirstItemNotificationType(item);
-        if (type) this._showNotification(type, this.notificationDuration);
+        var type = this._getFirstItemDialogueType(item);
+        if (!type) return;
+
+        this._ensureDialogueControl();
+        if (!this._dialogueControl) return;
+
+        this._stopAllActorMovement();
+        var self = this;
+        if (!this._dialogueControl.show(type, function () {
+            self._resumeAfterDialogue();
+        })) {
+            this._resumeAfterDialogue();
+        }
     },
 
     _showFirstNormieBumpNotification: function () {
+        if (this._isNiuPaiWaitingForPickup()) return;
         if (this._shownNormieBumpNotification) return;
         this._shownNormieBumpNotification = true;
         this._showNotification(NPNotification.Type.FirstNormieBump, this.notificationDuration);
     },
 
-    _showFirstObstacleBumpNotification: function () {
+    _showFirstObstacleBumpDialogue: function () {
         if (this._shownObstacleBumpNotification) return;
         this._shownObstacleBumpNotification = true;
-        this._playSfx(this.sfxObstacleBump);
-        this._showNotification(NPNotification.Type.FirstObstacleBump, this.notificationDuration);
+
+        this._ensureDialogueControl();
+        if (!this._dialogueControl) return;
+
+        this._stopAllActorMovement();
+        var self = this;
+        if (!this._dialogueControl.show(NPDialogue.Type.FirstObstacleBump, function () {
+            self._resumeAfterDialogue();
+        })) {
+            this._resumeAfterDialogue();
+        }
     },
 
-    _getFirstItemNotificationType: function (item) {
-        if (item === 'apple_pie') return NPNotification.Type.FirstApplePie;
-        if (item === 'bigmac') return NPNotification.Type.FirstBigMac;
-        if (item === 'mcflurry') return NPNotification.Type.FirstMcFlurry;
+    _playObstacleBumpSfx: function () {
+        if (this._obstacleBumpSfxCooldownTimer > 0) return;
+        this._obstacleBumpSfxCooldownTimer = Math.max(0, this.obstacleBumpSfxCooldownSeconds || 0.25);
+        this._playSfx(this.sfxObstacleBump);
+    },
+
+    _getFirstItemDialogueType: function (item) {
+        if (item === 'apple_pie') return NPDialogue.Type.FirstApplePie;
+        if (item === 'bigmac') return NPDialogue.Type.FirstBigMac;
+        if (item === 'mcflurry') return NPDialogue.Type.FirstMcFlurry;
         return null;
     },
 
@@ -1788,6 +1800,12 @@ cc.Class({
             return;
         }
         this._showNotification(NPNotification.Type.NiuPaiHurt, this.notificationDuration);
+    },
+
+    _isNiuPaiWaitingForPickup: function () {
+        return !!(this._niuPaiControl &&
+            this._niuPaiControl.isWaitingForPlayer &&
+            this._niuPaiControl.isWaitingForPlayer());
     },
 
     _mkHudLabel: function (name, text, size, color) {
@@ -2171,7 +2189,7 @@ cc.Class({
         this._foodSpoilTime = this.spoilDuration;
         this._refreshHudContent();
         this._playSfx(this.sfxItemPickup);
-        this._showFirstItemNotification(item);
+        this._showFirstItemDialogue(item);
     },
 
     _clearHeldItem: function () {
@@ -3680,7 +3698,7 @@ cc.Class({
         this._playSfx(this.sfxWalletPickup);
         this._walletPickupCount = Math.max(0, (this._walletPickupCount || 0) + 1);
         this._addScore(this._rollWalletPickupScore(), 'wallet');
-        if (!this._shownWalletPickupNotification) {
+        if (!this._isNiuPaiWaitingForPickup() && !this._shownWalletPickupNotification) {
             this._shownWalletPickupNotification = true;
             this._showNotification(NPNotification.Type.FirstWalletPickup, this.notificationDuration);
         }
@@ -3722,6 +3740,7 @@ cc.Class({
     },
 
     _showWalletSeenNotification: function () {
+        if (this._isNiuPaiWaitingForPickup()) return;
         if (this._walletNoticeCooldown > 0) return;
         this._walletNoticeCooldown = Math.max(0, this.walletNoticeCooldownSeconds || 20);
         this._playSfx(this.sfxWalletNotice, 0.8);
@@ -3917,19 +3936,6 @@ cc.Class({
         );
     },
 
-    _getTunnelTrollTeleportCenter: function () {
-        if (!this._tunnelTiledMap) return null;
-
-        var props = this._tunnelTiledMap.getProperties() || {};
-        var tileX = this._readNumberProperty(props, 'trollTeleportX');
-        var tileY = this._readNumberProperty(props, 'trollTeleportY');
-        if (tileX === null || tileY === null) return null;
-
-        return cc.v2(
-            this.tunnelTilemapOffset.x + tileX * this.mapPropertyTileSize,
-            this.tunnelTilemapOffset.y + tileY * this.mapPropertyTileSize
-        );
-    },
 
     _getEntranceTileCenter: function (tiledMap, offset, propX, propY) {
         if (!tiledMap) return null;
@@ -3984,38 +3990,8 @@ cc.Class({
             this._addTunnelEntrancePromptVisual(exitNode, { showArrow: true, showLabel: false });
         }
 
-        if (this.debugDrawTrollTeleport) {
-            this._drawTrollTeleportDebug(root);
-        }
     },
 
-    _drawTrollTeleportDebug: function (root) {
-        var center = this._getTunnelTrollTeleportCenter();
-        cc.log('[NiuPai] troll teleport debug at', center.x, center.y);
-        if (!center || !root || !root.isValid) return;
-
-        var node = new cc.Node('Debug_TrollTeleport');
-        node.setPosition(center.x + 16, center.y + 16);
-        root.addChild(node, 20);
-
-        var gfx = node.addComponent(cc.Graphics);
-        gfx.clear();
-        gfx.fillColor = cc.color(255, 0, 180, 60);
-        gfx.strokeColor = cc.color(0, 255, 255, 255);
-        gfx.lineWidth = 2;
-        gfx.rect(-16, -16, 32, 32);
-        gfx.fill();
-        gfx.stroke();
-
-        var labelNode = this._mkFloatingLabel(
-            'Debug_TrollTeleport_Label',
-            'TROLL',
-            cc.v2(0, 24),
-            10,
-            cc.color(0, 255, 255)
-        );
-        node.addChild(labelNode, 21);
-    },
 
     _drawOrderAreaPrompt: function () {
         if (!this._world) return;
@@ -4246,30 +4222,6 @@ cc.Class({
         cc.log('[NiuPai] Returned to main at ' + target.x + ', ' + target.y);
     },
 
-    _checkTunnelTrollTeleport: function () {
-        if (this._currentSection !== 'tunnel') return;
-        if (!this._mainTiledMap || !this._tunnelTiledMap || !this._playerNode) return;
-
-        var center = this._getTunnelTrollTeleportCenter();
-        if (!center) return;
-
-        var playerRect = this._getPlayerTriggerRect();
-        var triggerRect = {
-            minX: center.x,
-            maxX: center.x + 32,
-            minY: center.y,
-            maxY: center.y + 32
-        };
-
-        if (this._teleportNeedsExit) {
-            this._updateTeleportNeedsExit(playerRect);
-            return;
-        }
-        if (this._teleportCooldown > 0) return;
-        if (!this._rectsOverlap(playerRect, triggerRect)) return;
-
-        this._teleportToMainSpawn(triggerRect);
-    },
 
     _teleportToMainSpawn: function (sourceTriggerRect) {
         var target = this._getPlayerSpawnPosition();
@@ -4287,7 +4239,6 @@ cc.Class({
         if (this._blackDogControl) this._blackDogControl.onExitTunnel();
         this._updateCameraFollow();
         this._playSectionBgm('main');
-        this._showFirstTrollTeleportDialogue();
         cc.log('[NiuPai] Troll teleported player to main spawn at ' + target.x + ', ' + target.y);
     },
 
@@ -4749,7 +4700,10 @@ cc.Class({
         );
 
         var hitInitialObstacle = this._rectHitsInitialObstacle(rect, section);
-        if (hitInitialObstacle && actorType === 'player') this._showFirstObstacleBumpNotification();
+        if (hitInitialObstacle && actorType === 'player') {
+            this._playObstacleBumpSfx();
+            this._showFirstObstacleBumpDialogue();
+        }
         var hitStatic = hitInitialObstacle || this._rectHitsStaticObstacle(rect, section);
         return hitStatic || this._rectHitsActorBlocker(rect, actorType, node);
     },
@@ -5251,6 +5205,7 @@ cc.Class({
     },
 
     update: function (dt) {
+        this._obstacleBumpSfxCooldownTimer = Math.max(0, (this._obstacleBumpSfxCooldownTimer || 0) - Math.max(0, dt || 0));
         this._cameraShakeTimer = Math.max(0, (this._cameraShakeTimer || 0) - Math.max(0, dt || 0));
 
         this._recoverDialogueStateIfNeeded();
