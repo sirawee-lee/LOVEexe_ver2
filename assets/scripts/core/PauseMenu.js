@@ -35,9 +35,14 @@ var PauseMenu = {
     _overlayTarget: null,
     _barNode: null,
     _muteLbl: null,
-    _vol: 7,
+    _vol: 10,
     _muted: false,
     _audioClients: [],
+    _hooked: false,
+    _reqMusic: 1,        // last volume the MUSIC channel asked for (before master scaling)
+    _reqEffects: 1,      // last volume the EFFECTS channel asked for
+    _setMusicRaw: null,  // original (unwrapped) cc.audioEngine setters
+    _setEffectsRaw: null,
 
     isOpen: function () {
         return !!this._open;
@@ -66,9 +71,49 @@ var PauseMenu = {
     init: function () {
         if (this._inited) return;
         this._inited = true;
+        this._installAudioHook();   // make EVERY audioEngine call obey the master mute/volume
         this._load();
         this._apply();   // apply saved volume to the audio engine right away
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this._onKey, this);
+    },
+
+    // Route every cc.audioEngine volume/playback call through the master mute+volume.
+    // Scenes & minigames call setMusicVolume / play / playMusic with their own levels;
+    // without this, loading a new scene re-raises the volume and ignores a mute. We wrap
+    // the engine ONCE here so the master setting is always enforced, everywhere.
+    _installAudioHook: function () {
+        if (this._hooked) return;
+        var ae = cc.audioEngine;
+        if (!ae || typeof ae.setMusicVolume !== 'function') return;
+        this._hooked = true;
+        var PM = this;
+        var master = function () { return PM._muted ? 0 : PM._vol / 10; };
+
+        var _setMusic   = ae.setMusicVolume.bind(ae);
+        var _setEffects = ae.setEffectsVolume.bind(ae);
+        var _play       = ae.play.bind(ae);
+        var _playMusic  = ae.playMusic.bind(ae);
+        PM._setMusicRaw = _setMusic;
+        PM._setEffectsRaw = _setEffects;
+
+        ae.setMusicVolume = function (v) {
+            PM._reqMusic = (v == null) ? 1 : v;          // remember what the scene asked for…
+            return _setMusic(PM._reqMusic * master());   // …but actually apply it scaled by master
+        };
+        ae.setEffectsVolume = function (v) {
+            PM._reqEffects = (v == null) ? 1 : v;
+            return _setEffects(PM._reqEffects * master());
+        };
+        ae.play = function (clip, loop, vol) {
+            var req = (vol == null) ? 1 : vol;
+            return _play(clip, loop, req * master());     // per-sound volume obeys the master too
+        };
+        ae.playMusic = function (clip, loop) {
+            PM._reqMusic = 1;                             // a fresh track defaults to full…
+            var id = _playMusic(clip, loop);
+            try { _setMusic(master()); } catch (e) {}     // …scaled by master (a later setMusicVolume can override)
+            return id;
+        };
     },
 
     _onKey: function (e) {
@@ -122,7 +167,7 @@ var PauseMenu = {
             if (raw) {
                 var d = JSON.parse(raw);
                 if (d && typeof d === 'object') {
-                    this._vol = (d.vol == null) ? 7 : Math.max(0, Math.min(10, d.vol));
+                    this._vol = (d.vol == null) ? 10 : Math.max(0, Math.min(10, d.vol));
                     this._muted = !!d.muted;
                 }
             }
@@ -134,10 +179,15 @@ var PauseMenu = {
     // Apply to BOTH channels: music (boss/dog minigames use playMusic) and effects
     // (overworld + typing BGM + all SFX use play/playEffect) — so this is a master volume.
     _apply: function () {
-        var v = this._muted ? 0 : this._vol / 10;
-        try { cc.audioEngine.setMusicVolume(v); } catch (e) {}
-        try { cc.audioEngine.setEffectsVolume(v); } catch (e) {}
-        this._notifyAudioClients('onGlobalAudioVolumeChanged', v);
+        var m = this._muted ? 0 : this._vol / 10;
+        // Re-scale whatever each channel last asked for by the master multiplier, using
+        // the RAW setters so we don't overwrite the remembered request values. This also
+        // updates everything that is already playing (mute/unmute takes effect live).
+        var setM = this._setMusicRaw || function (x) { cc.audioEngine.setMusicVolume(x); };
+        var setE = this._setEffectsRaw || function (x) { cc.audioEngine.setEffectsVolume(x); };
+        try { setM(this._reqMusic * m); } catch (e) {}
+        try { setE(this._reqEffects * m); } catch (e) {}
+        this._notifyAudioClients('onGlobalAudioVolumeChanged', m);
     },
     _setVol: function (delta) {
         this._vol = Math.max(0, Math.min(10, this._vol + delta));

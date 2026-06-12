@@ -42,6 +42,37 @@ const PixelFont = {
             _flush();
         });
     },
+
+    // Resolve a CSS font-family the DOM can use for VT323 (for native <input>s on
+    // the login screen). Canvas Labels get the cc.Font directly, but a DOM element
+    // needs a real @font-face — so we load the .ttf as a FontFace once. cb(family)
+    // is called with the family name to use (or null if it couldn't be loaded).
+    domFamily(cb) {
+        if (PixelFont._domFamily) { cb(PixelFont._domFamily); return; }
+        cc.resources.load(FONT_PATH, cc.Font, (err, font) => {
+            if (err || !font) { cb(null); return; }
+            if (!_font) { _font = font; _flush(); }
+            const fallback = font._fontFamily || 'VT323';
+            try {
+                const url = font.nativeUrl;
+                if (url && typeof FontFace !== 'undefined' &&
+                    typeof document !== 'undefined' && document.fonts) {
+                    const ff = new FontFace('LoveEXEPixel', 'url("' + url + '")');
+                    ff.load().then((loaded) => {
+                        document.fonts.add(loaded);
+                        PixelFont._domFamily = 'LoveEXEPixel';
+                        cb(PixelFont._domFamily);
+                    }).catch(() => {
+                        PixelFont._domFamily = fallback;
+                        cb(fallback);
+                    });
+                    return;
+                }
+            } catch (e) {}
+            PixelFont._domFamily = fallback;
+            cb(fallback);
+        });
+    },
 };
 
 module.exports = PixelFont;

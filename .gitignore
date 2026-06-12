@@ -55,3 +55,6 @@ Thumbs.db
 #//////////////////////////
 
 .firebase/
+*.docx
+*.pdf
+*.pptx
