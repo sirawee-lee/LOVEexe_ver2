@@ -31,6 +31,7 @@ cc.Class({
         debugImmediateResult: { default: false },
         debugImmediateResultType: { default: DebugImmediateResultType.Win, type: DebugImmediateResultType },
         debugDisableInitialObstacles: { default: false },
+        debugDrawTrollTeleport: { default: false },
         sfxCorrect: { default: null, type: cc.AudioClip },
         sfxWrong:   { default: null, type: cc.AudioClip },
         sfxNotification: { default: null, type: cc.AudioClip },
@@ -55,11 +56,17 @@ cc.Class({
         sfxTunnelExitBlocked: { default: null, type: cc.AudioClip },
         sfxPlayerDamage: { default: null, type: cc.AudioClip },
         sfxNiuPaiDamage: { default: null, type: cc.AudioClip },
+        sfxPlayerDeath: { default: null, type: cc.AudioClip },
+        sfxNiuPaiDeath: { default: null, type: cc.AudioClip },
         sfxBlackDogSpawn: { default: null, type: cc.AudioClip },
         sfxBlackDogAttack: { default: null, type: cc.AudioClip },
         sfxBlackDogStun: { default: null, type: cc.AudioClip },
         sfxBlackDogBaitAlert: { default: null, type: cc.AudioClip },
         walletSprite: { default: null, type: cc.SpriteFrame },
+        itemDropShadowSprite: { default: null, type: cc.SpriteFrame },
+        walletDropShadowSprite: { default: null, type: cc.SpriteFrame },
+        bigMacDropShadowSprite: { default: null, type: cc.SpriteFrame },
+        mcFlurryDropShadowSprite: { default: null, type: cc.SpriteFrame },
         playerSheet: { default: null, type: cc.Texture2D },
         niuPaiSheet: { default: null, type: cc.Texture2D },
         blackDogSheet: { default: null, type: cc.Texture2D },
@@ -80,6 +87,8 @@ cc.Class({
         blackDogFollowingStatusSprite: { default: null, type: cc.SpriteFrame },
         blackDogRobStatusFrames: { default: [], type: [cc.SpriteFrame] },
         blackDogRobStatusSheet: { default: null, type: cc.Texture2D },
+        blackDogBaitStatusFrames: { default: [], type: [cc.SpriteFrame] },
+        blackDogBaitStatusSheet: { default: null, type: cc.Texture2D },
         normieSheet: { default: null, type: cc.Texture2D },
         normieSheets: { default: [], type: [cc.Texture2D] },
         applePieSprite: { default: null, type: cc.SpriteFrame },
@@ -113,6 +122,16 @@ cc.Class({
         GameProperties.applyTo(this);
         this._onResult = null;
         this._active = false;
+        this._deathSequenceActive = false;
+        this._deathScreenFadeNode = null;
+        this._deathScreenFadeDelay = 0;
+        this._deathScreenFadeTimer = 0;
+        this._deathScreenFadeDuration = 0;
+        this._exitTransitionActive = false;
+        this._exitTransitionTimer = 0;
+        this._exitTransitionDuration = 0;
+        this._pendingExitResult = null;
+        this._tunnelOverlayFade = 1;
         this._bgmId = -1;
         this._currentBgmClip = null;
         this._bgmPausedByGlobalPause = false;
@@ -122,8 +141,10 @@ cc.Class({
         this._walletDropTimer = 0;
         this._walletPlayerDropCooldownTimer = 0;
         this._wallets = [];
+        this._walletPickupCount = 0;
         this._walletNoticeCooldown = 0;
         this._shownWalletPickupNotification = false;
+        this._walletPickupCount = 0;
         this._world = null;
         this._mainTiledMap = null;
         this._tunnelTiledMap = null;
@@ -180,10 +201,12 @@ cc.Class({
         this._hudRoot = null;
         this._hudBg = null;
         this._hudItemSprite = null;
+        this._hudItemVisual = null;
         this._hudItemFallback = null;
         this._hudHoldingLabel = null;
         this._hudSpoilLabel = null;
         this._hudScoreLabel = null;
+        this._hudElapsedLabel = null;
         this._hudHpLabel = null;
         this._objectiveRoot = null;
         this._objectiveBg = null;
@@ -198,6 +221,7 @@ cc.Class({
         this._dialogueHidesHud = false;
         this._introDialogOpen = false;
         this._shownTunnelIntroDialogue = false;
+        this._shownTrollTeleportDialogue = false;
         this._hasEnteredTunnelSection = false;
         this._shownItemNotifications = {};
         this._shownNormieBumpNotification = false;
@@ -264,6 +288,13 @@ cc.Class({
 
     _initGame: function () {
         this._active = true;
+        this._deathSequenceActive = false;
+        this._resetDeathScreenFade();
+        this._exitTransitionActive = false;
+        this._exitTransitionTimer = 0;
+        this._exitTransitionDuration = 0;
+        this._pendingExitResult = null;
+        this._tunnelOverlayFade = 1;
         this._keys = {};
         this._runtimeScore = 0;
         this._elapsedGameSeconds = 0;
@@ -271,6 +302,7 @@ cc.Class({
         this._walletDropTimer = Math.max(0.01, this.walletDropIntervalSeconds || 5);
         this._walletPlayerDropCooldownTimer = 0;
         this._walletNoticeCooldown = 0;
+        this._walletPickupCount = 0;
         this._wallets = [];
         this._shownWalletPickupNotification = false;
         this._currentSection = 'main';
@@ -283,6 +315,7 @@ cc.Class({
         this._introDialogOpen = false;
         this._playerNormieSlowTimer = 0;
         this._shownTunnelIntroDialogue = false;
+        this._shownTrollTeleportDialogue = false;
         this._heldItem = null;
         this._foodSpoilTime = this.spoilDuration;
         this._shownItemNotifications = {};
@@ -965,7 +998,7 @@ cc.Class({
         var left = this._keys[cc.macro.KEY.a] || this._keys[cc.macro.KEY.left];
         var right = this._keys[cc.macro.KEY.d] || this._keys[cc.macro.KEY.right];
         var careful = this._playerMovingCarefully;
-        var speed = careful ? this.playerCarefulSpeed : this.playerWalkSpeed;
+        var speed = careful ? this.playerCarefulSpeed : this._getPlayerWalkSpeed();
         if (!careful && this._playerNormieSlowTimer > 0) {
             speed *= Math.max(0, Math.min(1, this.normiePlayerSlowMultiplier || 0.9));
         }
@@ -1019,8 +1052,30 @@ cc.Class({
         this._clampPlayerToMap();
         this._checkTunnelEntrance();
         this._checkTunnelReturnEntrance();
+        this._checkTunnelTrollTeleport();
         this._checkTunnelExit();
         this._updateOrderTrigger();
+    },
+
+    _getPlayerWalkSpeed: function () {
+        if (this._currentSection === 'tunnel') {
+            return Math.max(0, this.tunnelActorSpeed || this.blackDogChaseSpeed || this.playerWalkSpeed || 0);
+        }
+        return Math.max(0, this.playerWalkSpeed || 0);
+    },
+
+    _getNiuPaiFollowSpeed: function () {
+        if (this._currentSection === 'tunnel') {
+            return Math.max(0, this.tunnelActorSpeed || this.blackDogChaseSpeed || this.niuPaiFollowSpeed || 0);
+        }
+        return Math.max(0, this.niuPaiFollowSpeed || 0);
+    },
+
+    _getBlackDogChaseSpeed: function () {
+        if (this._currentSection === 'tunnel') {
+            return Math.max(0, this.tunnelActorSpeed || this.blackDogChaseSpeed || 0);
+        }
+        return Math.max(0, this.blackDogChaseSpeed || 0);
     },
 
     _updateOrderTrigger: function () {
@@ -1319,8 +1374,9 @@ cc.Class({
         if (this._dialogueControl) this._dialogueControl.update();
     },
 
-    _drawPanel: function (node, width, height, fillColor, strokeColor, spriteFrame) {
+    _drawPanel: function (node, width, height, fillColor, strokeColor, spriteFrame, drawShadow) {
         if (!node || !node.isValid) return;
+        drawShadow = drawShadow !== false;
 
         node.setContentSize(width, height);
 
@@ -1333,7 +1389,8 @@ cc.Class({
             sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
             node.setContentSize(width, height);
             if (gfx) gfx.clear();
-            this._drawGuiShadow(node, width, height, 0);
+            if (drawShadow) this._drawGuiShadow(node, width, height, 0);
+            else this._hideGuiShadow(node);
             return;
         }
 
@@ -1346,7 +1403,44 @@ cc.Class({
         gfx.rect(-width / 2, -height / 2, width, height);
         gfx.fill();
         gfx.stroke();
-        this._drawGuiShadow(node, width, height, 0);
+        if (drawShadow) this._drawGuiShadow(node, width, height, 0);
+        else this._hideGuiShadow(node);
+    },
+
+    _hideGuiShadow: function (node) {
+        if (!node || !node.isValid || !node.parent) return;
+        var childShadow = node.getChildByName('GuiDropShadow');
+        if (childShadow && childShadow.isValid) childShadow.active = false;
+
+        var siblingShadow = node.parent.getChildByName(node.name + '_GuiDropShadow');
+        if (siblingShadow && siblingShadow.isValid) siblingShadow.active = false;
+    },
+
+    _ensureItemDropShadow: function (parent, offsetY, shadowFrame) {
+        if (!parent || !parent.isValid) return null;
+
+        var shadow = parent.getChildByName('NPItemDropShadow');
+        shadowFrame = arguments.length >= 3 ? shadowFrame : this.itemDropShadowSprite;
+        if (!shadowFrame) {
+            if (shadow && shadow.isValid) shadow.active = false;
+            return null;
+        }
+
+        if (!shadow || !shadow.isValid) {
+            shadow = new cc.Node('NPItemDropShadow');
+            shadow.setAnchorPoint(0.5, 0.5);
+            parent.addChild(shadow, -1);
+            var sprite = shadow.addComponent(cc.Sprite);
+            sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        }
+
+        shadow.zIndex = -1;
+        shadow.setPosition(0, typeof offsetY === 'number' ? offsetY : (this.itemDropShadowOffsetY || -3));
+        shadow.active = true;
+        var shadowSprite = shadow.getComponent(cc.Sprite);
+        shadowSprite.spriteFrame = shadowFrame;
+        shadowSprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        return shadow;
     },
 
     _drawGuiShadow: function (node, width, height, centerOffsetX) {
@@ -1415,11 +1509,15 @@ cc.Class({
         root.addChild(this._hudItemFallback, 1);
 
         var spriteNode = new cc.Node('HeldItemSprite');
-        var sprite = spriteNode.addComponent(cc.Sprite);
-        sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        var itemVisual = new cc.Node('HeldItemVisual');
+        var sprite = itemVisual.addComponent(cc.Sprite);
+        sprite.sizeMode = cc.Sprite.SizeMode.TRIMMED;
         spriteNode.setContentSize(this.hudIconSize, this.hudIconSize);
+        itemVisual.setContentSize(this.hudIconSize, this.hudIconSize);
+        spriteNode.addChild(itemVisual, 1);
         root.addChild(spriteNode, 2);
         this._hudItemSprite = spriteNode;
+        this._hudItemVisual = itemVisual;
 
         this._hudHoldingLabel = this._mkHudLabel('HudHoldingLabel', '', 16, cc.Color.BLACK);
         root.addChild(this._hudHoldingLabel, 2);
@@ -1429,6 +1527,9 @@ cc.Class({
 
         this._hudScoreLabel = this._mkHudLabel('HudScoreLabel', '', 16, cc.Color.BLACK);
         root.addChild(this._hudScoreLabel, 2);
+
+        this._hudElapsedLabel = this._mkHudLabel('HudElapsedLabel', '', 16, cc.Color.BLACK);
+        root.addChild(this._hudElapsedLabel, 2);
 
         this._hudHpLabel = this._mkHudLabel('HudHpLabel', '', 16, cc.Color.BLACK);
         root.addChild(this._hudHpLabel, 2);
@@ -1452,6 +1553,16 @@ cc.Class({
         this._hudRoot.parent = this._camera.node;
         this._hudRoot.zIndex = 1500;
         this._hudRoot.setPosition(0, 0);
+    },
+
+    _ensureCriticalHpOverlayParent: function () {
+        if (!this._criticalHpOverlayNode || !this._criticalHpOverlayNode.isValid) return;
+        if (!this._camera || !this._camera.node || !this._camera.node.isValid) return;
+        if (this._criticalHpOverlayNode.parent === this._camera.node) return;
+
+        this._criticalHpOverlayNode.parent = this._camera.node;
+        this._criticalHpOverlayNode.zIndex = 1490;
+        this._criticalHpOverlayNode.setPosition(0, 0);
     },
 
     _ensureObjectiveUi: function () {
@@ -1483,7 +1594,10 @@ cc.Class({
     },
 
     _ensureCriticalHpOverlay: function () {
-        if (this._criticalHpOverlayNode && this._criticalHpOverlayNode.isValid) return;
+        if (this._criticalHpOverlayNode && this._criticalHpOverlayNode.isValid) {
+            this._ensureCriticalHpOverlayParent();
+            return;
+        }
 
         var node = new cc.Node('CriticalHpOverlay');
         node.zIndex = 1490;
@@ -1491,6 +1605,7 @@ cc.Class({
         node.addComponent(cc.Graphics);
         this.node.addChild(node, 1490);
         this._criticalHpOverlayNode = node;
+        this._ensureCriticalHpOverlayParent();
     },
 
     _ensureTunnelVisionOverlay: function () {
@@ -1589,6 +1704,25 @@ cc.Class({
         this._stopAllActorMovement();
         if (this._dialogueControl) {
             if (!this._dialogueControl.show(NPDialogue.Type.TunnelIntro, function () {
+                self._resumeAfterDialogue();
+            })) {
+                self._resumeAfterDialogue();
+            }
+        } else {
+            this._resumeAfterDialogue();
+        }
+    },
+
+    _showFirstTrollTeleportDialogue: function () {
+        if (this._shownTrollTeleportDialogue) return;
+
+        var self = this;
+        this._shownTrollTeleportDialogue = true;
+        this._ensureDialogueControl();
+        this._keys = {};
+        this._stopAllActorMovement();
+        if (this._dialogueControl) {
+            if (!this._dialogueControl.show(NPDialogue.Type.TrollTeleport, function () {
                 self._resumeAfterDialogue();
             })) {
                 self._resumeAfterDialogue();
@@ -1735,8 +1869,9 @@ cc.Class({
         this._hudItemSprite.setPosition(iconX, hudY);
         this._hudHoldingLabel.setPosition(leftX + 48, textY);
         this._hudSpoilLabel.setPosition(leftX + hudW * 0.35, textY);
-        this._hudScoreLabel.setPosition(leftX + hudW * 0.56, textY);
-        this._hudHpLabel.setPosition(rightX - 150, textY);
+        this._hudScoreLabel.setPosition(leftX + hudW * 0.52, textY);
+        this._hudElapsedLabel.setPosition(leftX + hudW * 0.64, textY);
+        this._hudHpLabel.setPosition(leftX + hudW * 0.8, textY);
         this._updateObjectiveUi(0, -viewH / 2, viewW, viewH);
     },
 
@@ -1749,10 +1884,12 @@ cc.Class({
             ? 'Spoil: ' + Math.ceil(this._foodSpoilTime) + 's'
             : '';
         this._hudScoreLabel.getComponent(cc.Label).string = 'Score: ' + Math.floor(this._runtimeScore || 0);
+        this._hudElapsedLabel.getComponent(cc.Label).string = 'Elapsed: ' + Math.floor(this._elapsedGameSeconds || 0) + 's';
         this._hudHpLabel.getComponent(cc.Label).string =
             'MC HP: ' + this._mcHp + '  NiuPai HP: ' + this._niuPaiHp;
 
-        var sprite = this._hudItemSprite.getComponent(cc.Sprite);
+        var spriteNode = this._hudItemVisual || this._hudItemSprite;
+        var sprite = spriteNode.getComponent(cc.Sprite);
         var frame = this._getHeldItemSpriteFrame();
         sprite.spriteFrame = frame;
         this._hudItemSprite.active = !!frame;
@@ -1894,6 +2031,14 @@ cc.Class({
         node.active = visible;
         if (!visible) return;
 
+        var overlayFade = Math.max(0, Math.min(1, typeof this._tunnelOverlayFade === 'number' ? this._tunnelOverlayFade : 1));
+        if (overlayFade <= 0) {
+            var emptyGfx = node.getComponent(cc.Graphics);
+            if (emptyGfx) emptyGfx.clear();
+            node.active = false;
+            return;
+        }
+
         var cameraPos = this._getCameraPositionInGameNode();
         node.setPosition(cameraPos);
 
@@ -1919,11 +2064,11 @@ cc.Class({
         var gfx = node.getComponent(cc.Graphics);
         gfx.clear();
 
-        gfx.fillColor = cc.color(0, 0, 0, Math.max(0, Math.min(255, this.tunnelDarknessOpacity || 0)));
+        gfx.fillColor = cc.color(0, 0, 0, Math.max(0, Math.min(255, (this.tunnelDarknessOpacity || 0) * overlayFade)));
         gfx.rect(left, bottom, viewW, top - bottom);
         gfx.fill();
 
-        gfx.fillColor = cc.color(0, 0, 0, Math.max(0, Math.min(255, this.tunnelVisionOuterOpacity || 0)));
+        gfx.fillColor = cc.color(0, 0, 0, Math.max(0, Math.min(255, (this.tunnelVisionOuterOpacity || 0) * overlayFade)));
         for (var i = 0; i < bands; i++) {
             var y0 = bottom + i * bandH;
             var y1 = i === bands - 1 ? top : y0 + bandH + 0.5;
@@ -1977,20 +2122,27 @@ cc.Class({
         node.active = visible;
         if (!visible) return;
 
-        var cameraPos = this._getCameraPositionInGameNode();
-        node.setPosition(cameraPos);
-
         var zoom = this._camera ? (this._camera.zoomRatio || 1) : 1;
-        var viewW = cc.winSize.width / zoom;
-        var viewH = cc.winSize.height / zoom;
-        var hudH = this.hudHeight;
-        var overlayH = Math.max(0, viewH - hudH);
-        var overlayY = hudH / 2;
+        var cameraOverlay = this._camera && this._camera.node && node.parent === this._camera.node;
+        if (cameraOverlay) {
+            node.setPosition(0, 0);
+            node.setScale(1 / zoom);
+        } else {
+            var cameraPos = this._getCameraPositionInGameNode();
+            node.setPosition(cameraPos);
+            node.setScale(1, 1);
+        }
+
+        var viewW = cameraOverlay ? cc.winSize.width : cc.winSize.width / zoom;
+        var viewH = cameraOverlay ? cc.winSize.height : cc.winSize.height / zoom;
+        var hudBottomMargin = 10;
+        var overlayH = Math.max(0, viewH);
+        var overlayBottom = -viewH / 2;
 
         var gfx = node.getComponent(cc.Graphics);
         gfx.clear();
         gfx.fillColor = cc.color(255, 0, 0, Math.max(0, Math.min(255, this.criticalHpOverlayOpacity || 0)));
-        gfx.rect(-viewW / 2, overlayY - overlayH / 2, viewW, overlayH);
+        gfx.rect(-viewW / 2, overlayBottom, viewW, overlayH);
         gfx.fill();
     },
 
@@ -2007,9 +2159,10 @@ cc.Class({
             this._hudItemFallback,
             size,
             size,
-            this._heldItem ? cc.color(255, 220, 100, 220) : cc.color(80, 65, 88, 220),
+            cc.color(0, 0, 0, 0),
             cc.color(255, 235, 180, 230),
-            this.hudItemFrameSprite
+            this.hudItemFrameSprite,
+            false
         );
     },
 
@@ -2036,6 +2189,12 @@ cc.Class({
         if (this._heldItem === 'bigmac') return this.bigMacSprite;
         if (this._heldItem === 'mcflurry') return this.mcFlurrySprite;
         return null;
+    },
+
+    _getHeldItemDropShadowSpriteFrame: function () {
+        if (this._heldItem === 'bigmac') return this.bigMacDropShadowSprite || this.itemDropShadowSprite;
+        if (this._heldItem === 'mcflurry') return this.mcFlurryDropShadowSprite || this.itemDropShadowSprite;
+        return this.itemDropShadowSprite;
     },
 
     _formatItemName: function (item) {
@@ -2103,11 +2262,19 @@ cc.Class({
         node.setPosition(position);
         this._world.addChild(node, 16);
 
-        var sprite = node.addComponent(cc.Sprite);
-        sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-        sprite.spriteFrame = this.bigMacSprite;
-
-        if (!this.bigMacSprite) {
+        if (this.bigMacSprite) {
+            this._ensureItemDropShadow(
+                node,
+                this.itemDropShadowOffsetY || -3,
+                this.bigMacDropShadowSprite || this.itemDropShadowSprite
+            );
+            var visual = new cc.Node('BigMacBaitVisual');
+            visual.setContentSize(this.bigMacBaitSize, this.bigMacBaitSize);
+            node.addChild(visual, 1);
+            var sprite = visual.addComponent(cc.Sprite);
+            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            sprite.spriteFrame = this.bigMacSprite;
+        } else {
             var gfx = node.addComponent(cc.Graphics);
             gfx.fillColor = cc.color(205, 120, 42, 230);
             gfx.circle(0, 0, this.bigMacBaitSize / 2);
@@ -2208,8 +2375,25 @@ cc.Class({
         node.setPosition(center);
         this._world.addChild(node, 17);
 
-        var gfx = node.addComponent(cc.Graphics);
-        this._drawMcFlurryExplosionFallback(gfx, false);
+        var areaNode = new cc.Node('McFlurryExplosionArea');
+        node.addChild(areaNode, -1);
+        var areaGfx = areaNode.addComponent(cc.Graphics);
+        this._drawMcFlurryExplosionFallback(areaGfx, false);
+
+        node.setContentSize(this.mapTileSize, this.mapTileSize);
+        if (this.mcFlurrySprite) {
+            this._ensureItemDropShadow(
+                node,
+                this.itemDropShadowOffsetY || -3,
+                this.mcFlurryDropShadowSprite || this.itemDropShadowSprite
+            );
+            var visual = new cc.Node('McFlurryVisual');
+            visual.setContentSize(this.mapTileSize, this.mapTileSize);
+            node.addChild(visual, 1);
+            var sprite = visual.addComponent(cc.Sprite);
+            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            sprite.spriteFrame = this.mcFlurrySprite;
+        }
         var countdownLabel = this._createMcFlurryCountdownLabel(node);
         node.runAction(cc.repeatForever(cc.sequence(
             cc.fadeTo(0.18, 150),
@@ -2241,6 +2425,7 @@ cc.Class({
 
     _updateMcFlurryExplosions: function (dt) {
         if (!this._mcFlurryExplosions || this._mcFlurryExplosions.length === 0) return;
+        if (this._isDialogueBlockingGameplayTimer()) return;
 
         var kept = [];
         for (var i = 0; i < this._mcFlurryExplosions.length; i++) {
@@ -2257,6 +2442,12 @@ cc.Class({
         }
 
         this._mcFlurryExplosions = kept;
+    },
+
+    _isDialogueBlockingGameplayTimer: function () {
+        if (this._orderOpen || this._introDialogOpen) return true;
+        if (!this._dialogueControl) return false;
+        return this._dialogueControl.isSimpleOpen() || this._dialogueControl.isOrderOpen();
     },
 
     _updateMcFlurryCountdownLabel: function (explosion) {
@@ -2277,10 +2468,24 @@ cc.Class({
         this._playSfx(this.sfxMcFlurryExplosion, 1);
 
         if (explosion.node && explosion.node.isValid) {
+            explosion.node.stopAllActions();
+            explosion.node.opacity = 255;
             if (explosion.label && explosion.label.node && explosion.label.node.isValid) {
                 explosion.label.node.destroy();
             }
-            var gfx = explosion.node.getComponent(cc.Graphics);
+            var visual = explosion.node.getChildByName('McFlurryVisual');
+            if (visual && visual.isValid) visual.destroy();
+            var shadow = explosion.node.getChildByName('NPItemDropShadow');
+            if (shadow && shadow.isValid) shadow.destroy();
+            var sprite = explosion.node.getComponent(cc.Sprite);
+            if (sprite) {
+                sprite.spriteFrame = null;
+                sprite.destroy();
+            }
+            var areaNode = explosion.node.getChildByName('McFlurryExplosionArea');
+            var gfx = areaNode && areaNode.isValid
+                ? areaNode.getComponent(cc.Graphics)
+                : explosion.node.getComponent(cc.Graphics);
             if (gfx) {
                 if (this._hasMcFlurryExplosionSpriteAnimation()) gfx.clear();
                 else this._drawMcFlurryExplosionFallback(gfx, true);
@@ -2888,7 +3093,10 @@ cc.Class({
 
     _damageBigMacBait: function (bait, amount) {
         if (!bait || bait.hp <= 0) return;
-        this._flashDamageTarget(bait.node);
+        var damageTarget = bait.node && bait.node.isValid
+            ? (bait.node.getChildByName('BigMacBaitVisual') || bait.node)
+            : null;
+        this._flashDamageTarget(damageTarget);
         bait.hp = Math.max(0, bait.hp - Math.max(1, amount || 1));
         this._drawActorHpBar(bait.hpBar, bait.hp, bait.maxHp || this.bigMacBaitHp || 1);
         if (bait.hp > 0) return;
@@ -3001,6 +3209,27 @@ cc.Class({
             'following',
             frames,
             Math.max(1, this.blackDogRobStatusFps || 8)
+        );
+    },
+
+    _setBlackDogBaitStatusIcon: function (dogNode, active) {
+        var frames = this._getSpriteFramesFromSheet(
+            this.blackDogBaitStatusFrames,
+            this.blackDogBaitStatusSheet,
+            this.blackDogBaitStatusFrameW,
+            this.blackDogBaitStatusFrameH,
+            this.blackDogBaitStatusFrameCount
+        );
+        return this._setActorStatusIcon(
+            dogNode,
+            'NPBlackDogBaitStatusIcon',
+            !!active,
+            this.blackDogBaitAlertSprite,
+            Math.max(6, this.blackDogFollowingStatusIconSize || 18),
+            this.blackDogFrameH / 2 + (this.blackDogFollowingStatusYOffset || 26),
+            'bait',
+            frames,
+            Math.max(1, this.blackDogBaitStatusFps || 8)
         );
     },
 
@@ -3131,6 +3360,19 @@ cc.Class({
             gfx.stroke();
             gfx.fillColor = cc.color(255, 255, 255, 245);
             gfx.circle(0, 0, Math.max(2, size * 0.18));
+            gfx.fill();
+            return;
+        }
+
+        if (fallbackType === 'bait') {
+            gfx.fillColor = cc.color(255, 235, 70, 245);
+            gfx.strokeColor = cc.color(80, 40, 12, 245);
+            gfx.lineWidth = 1;
+            gfx.circle(0, 0, half - 1);
+            gfx.fill();
+            gfx.stroke();
+            gfx.fillColor = cc.color(80, 40, 12, 245);
+            gfx.circle(0, -2, Math.max(2, size * 0.16));
             gfx.fill();
             return;
         }
@@ -3376,9 +3618,17 @@ cc.Class({
         this._world.addChild(node, 19);
 
         if (this.walletSprite) {
-            var sprite = node.addComponent(cc.Sprite);
+            this._ensureItemDropShadow(
+                node,
+                this.walletDropShadowOffsetY || -4,
+                this.walletDropShadowSprite || this.itemDropShadowSprite
+            );
+            var visual = new cc.Node('WalletVisual');
+            visual.setContentSize(size, size);
+            node.addChild(visual, 1);
+            var sprite = visual.addComponent(cc.Sprite);
             sprite.spriteFrame = this.walletSprite;
-            sprite.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            sprite.sizeMode = cc.Sprite.SizeMode.RAW;
         } else {
             var gfx = node.addComponent(cc.Graphics);
             gfx.fillColor = cc.color(140, 82, 28, 245);
@@ -3431,12 +3681,47 @@ cc.Class({
         if (!wallet || wallet.picked) return;
         wallet.picked = true;
         this._playSfx(this.sfxWalletPickup);
-        this._addScore(this.scoreWalletPickupPoints, 'wallet');
+        this._walletPickupCount = Math.max(0, (this._walletPickupCount || 0) + 1);
+        this._addScore(this._rollWalletPickupScore(), 'wallet');
         if (!this._shownWalletPickupNotification) {
             this._shownWalletPickupNotification = true;
             this._showNotification(NPNotification.Type.FirstWalletPickup, this.notificationDuration);
         }
         if (wallet.node && wallet.node.isValid) wallet.node.destroy();
+    },
+
+    _rollWalletPickupScore: function () {
+        var base = Math.max(0, this.scoreWalletPickupPoints || 0);
+        var tier = this._rollWalletRewardTier();
+        var min = Math.max(0, tier.minMultiplier || 0);
+        var max = Math.max(min, tier.maxMultiplier || min);
+        var multiplier = min + Math.random() * (max - min);
+        var score = Math.max(0, Math.round(base * multiplier));
+        cc.log('[NiuPai] Wallet reward base=' + base + ' multiplier=' + multiplier.toFixed(2) + ' score=' + score);
+        return score;
+    },
+
+    _rollWalletRewardTier: function () {
+        var tiers = this.walletRewardTiers;
+        if (!tiers || tiers.length === 0) {
+            return { minMultiplier: 1, maxMultiplier: 1 };
+        }
+
+        var total = 0;
+        for (var i = 0; i < tiers.length; i++) {
+            total += Math.max(0, tiers[i].chance || 0);
+        }
+        if (total <= 0) {
+            return { minMultiplier: 1, maxMultiplier: 1 };
+        }
+
+        var roll = Math.random() * total;
+        var cursor = 0;
+        for (var j = 0; j < tiers.length; j++) {
+            cursor += Math.max(0, tiers[j].chance || 0);
+            if (roll <= cursor) return tiers[j];
+        }
+        return tiers[tiers.length - 1];
     },
 
     _showWalletSeenNotification: function () {
@@ -3635,6 +3920,20 @@ cc.Class({
         );
     },
 
+    _getTunnelTrollTeleportCenter: function () {
+        if (!this._tunnelTiledMap) return null;
+
+        var props = this._tunnelTiledMap.getProperties() || {};
+        var tileX = this._readNumberProperty(props, 'trollTeleportX');
+        var tileY = this._readNumberProperty(props, 'trollTeleportY');
+        if (tileX === null || tileY === null) return null;
+
+        return cc.v2(
+            this.tunnelTilemapOffset.x + tileX * this.mapPropertyTileSize,
+            this.tunnelTilemapOffset.y + tileY * this.mapPropertyTileSize
+        );
+    },
+
     _getEntranceTileCenter: function (tiledMap, offset, propX, propY) {
         if (!tiledMap) return null;
 
@@ -3687,6 +3986,38 @@ cc.Class({
             root.addChild(exitNode, 1);
             this._addTunnelEntrancePromptVisual(exitNode, { showArrow: true, showLabel: false });
         }
+
+        if (this.debugDrawTrollTeleport) {
+            this._drawTrollTeleportDebug(root);
+        }
+    },
+
+    _drawTrollTeleportDebug: function (root) {
+        var center = this._getTunnelTrollTeleportCenter();
+        cc.log('[NiuPai] troll teleport debug at', center.x, center.y);
+        if (!center || !root || !root.isValid) return;
+
+        var node = new cc.Node('Debug_TrollTeleport');
+        node.setPosition(center.x + 16, center.y + 16);
+        root.addChild(node, 20);
+
+        var gfx = node.addComponent(cc.Graphics);
+        gfx.clear();
+        gfx.fillColor = cc.color(255, 0, 180, 60);
+        gfx.strokeColor = cc.color(0, 255, 255, 255);
+        gfx.lineWidth = 2;
+        gfx.rect(-16, -16, 32, 32);
+        gfx.fill();
+        gfx.stroke();
+
+        var labelNode = this._mkFloatingLabel(
+            'Debug_TrollTeleport_Label',
+            'TROLL',
+            cc.v2(0, 24),
+            10,
+            cc.color(0, 255, 255)
+        );
+        node.addChild(labelNode, 21);
     },
 
     _drawOrderAreaPrompt: function () {
@@ -3853,6 +4184,7 @@ cc.Class({
         this._playSfx(this.sfxTeleport);
         this._currentSection = 'tunnel';
         this._hasEnteredTunnelSection = true;
+        this._tunnelOverlayFade = 1;
         this._teleportCooldown = 0.35;
         this._setTeleportNeedsExit(this._makeTeleportTriggerRect(target));
         this._playerNode.setPosition(target);
@@ -3915,6 +4247,51 @@ cc.Class({
         this._updateCameraFollow();
         this._playSectionBgm('main');
         cc.log('[NiuPai] Returned to main at ' + target.x + ', ' + target.y);
+    },
+
+    _checkTunnelTrollTeleport: function () {
+        if (this._currentSection !== 'tunnel') return;
+        if (!this._mainTiledMap || !this._tunnelTiledMap || !this._playerNode) return;
+
+        var center = this._getTunnelTrollTeleportCenter();
+        if (!center) return;
+
+        var playerRect = this._getPlayerTriggerRect();
+        var triggerRect = {
+            minX: center.x,
+            maxX: center.x + 32,
+            minY: center.y,
+            maxY: center.y + 32
+        };
+
+        if (this._teleportNeedsExit) {
+            this._updateTeleportNeedsExit(playerRect);
+            return;
+        }
+        if (this._teleportCooldown > 0) return;
+        if (!this._rectsOverlap(playerRect, triggerRect)) return;
+
+        this._teleportToMainSpawn(triggerRect);
+    },
+
+    _teleportToMainSpawn: function (sourceTriggerRect) {
+        var target = this._getPlayerSpawnPosition();
+
+        this._playSfx(this.sfxTeleport);
+        this._currentSection = 'main';
+        this._teleportCooldown = 0.35;
+        this._setTeleportNeedsExit(sourceTriggerRect);
+        this._playerNode.setPosition(target);
+        if (this._playerBody) {
+            this._playerBody.linearVelocity = cc.v2(0, 0);
+            this._playerBody.syncPosition(true);
+        }
+        if (this._niuPaiControl) this._niuPaiControl.moveNearPlayer();
+        if (this._blackDogControl) this._blackDogControl.onExitTunnel();
+        this._updateCameraFollow();
+        this._playSectionBgm('main');
+        this._showFirstTrollTeleportDialogue();
+        cc.log('[NiuPai] Troll teleported player to main spawn at ' + target.x + ', ' + target.y);
     },
 
     _checkTunnelExit: function () {
@@ -3983,8 +4360,104 @@ cc.Class({
         var held = this._heldItem ? this._formatItemName(this._heldItem) : 'None';
         cc.log('[NiuPai] Tunnel exit reached. Holding=' + held +
             ' spoil=' + Math.ceil(this._foodSpoilTime) + ' win=' + win);
+        this._startTunnelExitTransition(win, win ? '' : 'incorrect_food');
+    },
+
+    _startTunnelExitTransition: function (win, reason) {
+        if (this._exitTransitionActive) return;
+
+        this._exitTransitionActive = true;
+        this._exitTransitionDuration = Math.max(0.01, this.tunnelExitLightRestoreSeconds || 0.85);
+        this._exitTransitionTimer = this._exitTransitionDuration;
+        this._pendingExitResult = {
+            win: !!win,
+            reason: reason || '',
+        };
+        this._tunnelOverlayFade = 1;
+        this._keys = {};
+        this._stopAllActorMovement();
+        if (this._notificationControl) this._notificationControl.clear();
+    },
+
+    _updateTunnelExitTransition: function (dt) {
+        if (!this._exitTransitionActive) return false;
+
+        this._keys = {};
+        this._stopAllActorMovement();
+        this._exitTransitionTimer = Math.max(0, this._exitTransitionTimer - Math.max(0, dt || 0));
+        var duration = Math.max(0.01, this._exitTransitionDuration || 0.01);
+        this._tunnelOverlayFade = Math.max(0, Math.min(1, this._exitTransitionTimer / duration));
+        this._updateCameraFollow();
+        this._updateHud(0);
+        if (this._notificationControl) this._notificationControl.update(dt);
+
+        if (this._exitTransitionTimer > 0) return true;
+
+        var result = this._pendingExitResult || { win: false, reason: 'incorrect_food' };
+        this._exitTransitionActive = false;
+        this._pendingExitResult = null;
+        this._tunnelOverlayFade = 0;
+        this._showExitPreResultDialogue(!!result.win, result.reason || '');
+        return true;
+    },
+
+    _showExitPreResultDialogue: function (win, reason) {
+        this._ensureDialogueControl();
+        this._keys = {};
+        this._stopAllActorMovement();
+
+        var self = this;
+        if (this._dialogueControl) {
+            if (!this._dialogueControl.show(NPDialogue.Type.ExitPreResult, function () {
+                self._showExitResultSummary(!!win, reason || '');
+            })) {
+                self._showExitResultSummary(!!win, reason || '');
+            }
+        } else {
+            this._showExitResultSummary(!!win, reason || '');
+        }
+    },
+
+    _showExitResultSummary: function (win, reason) {
+        this._ensureDialogueControl();
+        this._keys = {};
+        this._stopAllActorMovement();
+
+        var content = NPDialogue.Content[NPDialogue.Type.ExitResultSummary];
+        if (content) {
+            content.text = this._buildExitResultSummaryText(!!win);
+            content.confirmText = '[E] Confirm';
+        }
+
+        var self = this;
+        if (this._dialogueControl) {
+            if (!this._dialogueControl.show(NPDialogue.Type.ExitResultSummary, function () {
+                self._finishExitResult(!!win, reason || '');
+            })) {
+                self._finishExitResult(!!win, reason || '');
+            }
+        } else {
+            this._finishExitResult(!!win, reason || '');
+        }
+    },
+
+    _finishExitResult: function (win, reason) {
         if (this._blackDogControl) this._blackDogControl.onExitTunnel();
-        this._finishGame(win, win ? 1 : 0, win ? '' : 'incorrect_food');
+        this._finishGame(!!win, win ? 1 : 0, reason || '');
+    },
+
+    _buildExitResultSummaryText: function (win) {
+        var breakdown = this._getFinalScoreBreakdown(!!win);
+        var held = this._heldItem ? this._formatItemName(this._heldItem) : 'None';
+        var result = win ? 'SUCCESS' : 'ESCAPED';
+        return [
+            'Food: ' + held,
+            'Wallets: ' + Math.max(0, this._walletPickupCount || 0),
+            'Base Score        +' + breakdown.baseScore,
+            'Time Bonus        +' + breakdown.timeBonus,
+            'HP Penalty        -' + breakdown.hpPenalty,
+            'Final Score        ' + breakdown.finalScore,
+        ].join('\n');
     },
 
     _hasWinningFood: function () {
@@ -3994,32 +4467,192 @@ cc.Class({
     },
 
     _damagePlayer: function (amount) {
-        if (!this._active) return;
+        if (!this._active || this._deathSequenceActive) return;
 
         this._flashDamageTarget(this._playerNode);
-        this._playSfx(this.sfxPlayerDamage);
         this._mcHp = Math.max(0, this._mcHp - amount);
         cc.log('[NiuPai] Player damaged. HP=' + this._mcHp);
         this._refreshHudContent();
 
         if (this._mcHp <= 0) {
-            this._finishGame(false, 0);
+            this._startDeathSequence('player');
+            return;
         }
+
+        this._playSfx(this.sfxPlayerDamage);
     },
 
     _damageNiuPai: function (amount) {
-        if (!this._active) return;
+        if (!this._active || this._deathSequenceActive) return;
 
         this._flashDamageTarget(this._niuPaiNode);
-        this._playSfx(this.sfxNiuPaiDamage);
         this._niuPaiHp = Math.max(0, this._niuPaiHp - amount);
         cc.log('[NiuPai] NiuPai damaged. HP=' + this._niuPaiHp);
         this._showNiuPaiHurtNotification();
         this._refreshHudContent();
 
         if (this._niuPaiHp <= 0) {
-            this._finishGame(false, 0);
+            this._startDeathSequence('niupai');
+            return;
         }
+
+        this._playSfx(this.sfxNiuPaiDamage);
+    },
+
+    _startDeathSequence: function (targetType) {
+        if (this._deathSequenceActive || !this._active) return;
+
+        var targetNode = targetType === 'niupai' ? this._niuPaiNode : this._playerNode;
+        if (!targetNode || !targetNode.isValid) {
+            this._finishGame(false, 0);
+            return;
+        }
+
+        this._deathSequenceActive = true;
+        this._keys = {};
+        this._orderOpen = false;
+        this._cameraShakeTimer = 0;
+        this._stopAllActorMovement();
+        this._pauseBgmForDeathSequence();
+        if (this._dialogueControl) this._dialogueControl.close();
+        if (this._notificationControl) this._notificationControl.clear();
+
+        var deathClip = targetType === 'niupai'
+            ? (this.sfxNiuPaiDeath || this.sfxNiuPaiDamage)
+            : (this.sfxPlayerDeath || this.sfxPlayerDamage);
+        this._playSfx(deathClip, 1);
+
+        this._panCameraToNode(targetNode, Math.max(0, this.deathCameraPanSeconds || 0.45));
+        var actorFadeSeconds = Math.max(0, this.deathActorFadeSeconds || 0.65);
+        var screenFadeSeconds = Math.max(0, this.deathScreenFadeSeconds || 0);
+        this._fadeOutDeathNode(targetNode, actorFadeSeconds);
+        this._fadeOutDeathScreen(actorFadeSeconds, screenFadeSeconds);
+
+        var delay = Math.max(
+            Math.max(0, this.deathCameraPanSeconds || 0.45),
+            actorFadeSeconds + screenFadeSeconds,
+            Math.max(0, this.deathFinishDelaySeconds || 0.8)
+        );
+        var self = this;
+        var reason = targetType === 'niupai' ? 'niupai_dead' : 'player_dead';
+        this.scheduleOnce(function () {
+            self._finishGame(false, 0, reason);
+        }, delay);
+
+        cc.log('[NiuPai] Death sequence started: ' + targetType);
+    },
+
+    _pauseBgmForDeathSequence: function () {
+        if (this._bgmId < 0) return;
+        try { cc.audioEngine.pause(this._bgmId); } catch (e) {}
+    },
+
+    _panCameraToNode: function (targetNode, duration) {
+        if (!this._camera || !this._camera.node || !targetNode || !targetNode.isValid) return;
+
+        var worldPos = targetNode.parent
+            ? targetNode.parent.convertToWorldSpaceAR(targetNode.getPosition())
+            : targetNode.getPosition();
+        var cameraParent = this._camera.node.parent;
+        var cameraLocal = cameraParent
+            ? cameraParent.convertToNodeSpaceAR(worldPos)
+            : worldPos;
+
+        cameraLocal.x += this.cameraFollowOffset.x;
+        cameraLocal.y += this.cameraFollowOffset.y;
+        cameraLocal = this._clampCameraToMap(cameraLocal);
+
+        this._camera.node.stopAllActions();
+        if (duration <= 0) {
+            this._camera.node.setPosition(cameraLocal);
+            return;
+        }
+
+        this._camera.node.runAction(cc.moveTo(duration, cameraLocal));
+    },
+
+    _fadeOutDeathNode: function (targetNode, duration) {
+        if (!targetNode || !targetNode.isValid) return;
+
+        targetNode.stopAllActions();
+        targetNode.opacity = 255;
+        if (duration <= 0) {
+            targetNode.opacity = 0;
+            return;
+        }
+
+        targetNode.runAction(cc.fadeOut(duration));
+    },
+
+    _fadeOutDeathScreen: function (delay, duration) {
+        var node = this._ensureDeathScreenFadeNode();
+        if (!node) return;
+
+        this._updateDeathScreenFadeNodeLayout();
+        node.stopAllActions();
+        node.opacity = 0;
+        node.active = true;
+        this._deathScreenFadeDelay = Math.max(0, delay || 0);
+        this._deathScreenFadeTimer = 0;
+        this._deathScreenFadeDuration = Math.max(0, duration || 0);
+        if (this._deathScreenFadeDelay <= 0 && this._deathScreenFadeDuration <= 0) {
+            node.opacity = 255;
+        }
+    },
+
+    _updateDeathScreenFade: function (dt) {
+        var node = this._deathScreenFadeNode;
+        if (!node || !node.isValid || !node.active) return;
+
+        if (this._deathScreenFadeDelay > 0) {
+            this._deathScreenFadeDelay = Math.max(0, this._deathScreenFadeDelay - Math.max(0, dt || 0));
+            node.opacity = 0;
+            return;
+        }
+
+        var duration = Math.max(0, this._deathScreenFadeDuration || 0);
+        if (duration <= 0) {
+            node.opacity = 255;
+            return;
+        }
+
+        this._deathScreenFadeTimer = Math.min(duration, (this._deathScreenFadeTimer || 0) + Math.max(0, dt || 0));
+        node.opacity = Math.round(255 * (this._deathScreenFadeTimer / duration));
+    },
+
+    _ensureDeathScreenFadeNode: function () {
+        if (this._deathScreenFadeNode && this._deathScreenFadeNode.isValid) return this._deathScreenFadeNode;
+        if (!this._camera || !this._camera.node || !this._camera.node.isValid) return null;
+
+        var node = new cc.Node('DeathScreenFade');
+        node.setAnchorPoint(0.5, 0.5);
+        node.opacity = 0;
+        node.active = false;
+        node.zIndex = 2500;
+        node.addComponent(cc.Graphics);
+        this._camera.node.addChild(node, 2500);
+        this._deathScreenFadeNode = node;
+        this._updateDeathScreenFadeNodeLayout();
+        return node;
+    },
+
+    _updateDeathScreenFadeNodeLayout: function () {
+        var node = this._deathScreenFadeNode;
+        if (!node || !node.isValid) return;
+
+        var zoom = this._camera ? (this._camera.zoomRatio || 1) : 1;
+        var viewW = cc.winSize.width;
+        var viewH = cc.winSize.height;
+        node.setPosition(0, 0);
+        node.setScale(1 / zoom);
+        node.setContentSize(viewW, viewH);
+
+        var gfx = node.getComponent(cc.Graphics);
+        if (!gfx) return;
+        gfx.clear();
+        gfx.fillColor = cc.color(0, 0, 0, 255);
+        gfx.rect(-viewW / 2, -viewH / 2, viewW, viewH);
+        gfx.fill();
     },
 
     _getTilePropertyPosition: function (tiledMap, offset, propX, propY, fallback) {
@@ -4471,10 +5104,17 @@ cc.Class({
     _finishGame: function (win, score, reason) {
         if (!this._active) return;
 
+        var isDeathResult = reason === 'player_dead' || reason === 'niupai_dead';
         var finalScore = this._calculateFinalScore(!!win);
         this._active = false;
+        this._deathSequenceActive = false;
+        this._exitTransitionActive = false;
+        this._pendingExitResult = null;
+        this._tunnelOverlayFade = 1;
         this._introDialogOpen = false;
         this._cameraShakeTimer = 0;
+        if (isDeathResult) this._holdDeathScreenFade();
+        else this._resetDeathScreenFade();
         if (this._criticalHpOverlayNode) this._criticalHpOverlayNode.active = false;
         if (this._tunnelVisionOverlayNode) this._tunnelVisionOverlayNode.active = false;
         if (this._objectiveRoot) this._objectiveRoot.active = false;
@@ -4482,12 +5122,37 @@ cc.Class({
         this._stopBgm();
 
         if (win) this._playSfx(this.sfxCorrect);
-        else this._playSfx(this.sfxWrong);
+        else if (!isDeathResult) this._playSfx(this.sfxWrong);
 
         if (this._onResult) this._onResult(!!win, finalScore, reason || '');
     },
 
+    _holdDeathScreenFade: function () {
+        var node = this._ensureDeathScreenFadeNode();
+        if (!node) return;
+        this._updateDeathScreenFadeNodeLayout();
+        node.stopAllActions();
+        node.opacity = 255;
+        node.active = true;
+        this._deathScreenFadeDelay = 0;
+        this._deathScreenFadeTimer = this._deathScreenFadeDuration || 0;
+    },
+
+    _resetDeathScreenFade: function () {
+        if (!this._deathScreenFadeNode || !this._deathScreenFadeNode.isValid) return;
+        this._deathScreenFadeNode.stopAllActions();
+        this._deathScreenFadeNode.opacity = 0;
+        this._deathScreenFadeNode.active = false;
+        this._deathScreenFadeDelay = 0;
+        this._deathScreenFadeTimer = 0;
+        this._deathScreenFadeDuration = 0;
+    },
+
     _calculateFinalScore: function (win) {
+        return this._getFinalScoreBreakdown(!!win).finalScore;
+    },
+
+    _getFinalScoreBreakdown: function (win) {
         var score = Math.max(0, Math.floor(this._runtimeScore || 0));
         var mcLost = Math.max(0, (this.mcMaxHp || 0) - (this._mcHp || 0));
         var niuPaiLost = Math.max(0, (this.niuPaiMaxHp || 0) - (this._niuPaiHp || 0));
@@ -4504,7 +5169,14 @@ cc.Class({
             ' timeBonus=' + timeBonus +
             ' hpPenalty=' + hpPenalty +
             ' final=' + finalScore);
-        return finalScore;
+        return {
+            baseScore: score,
+            timeBonus: timeBonus,
+            hpPenalty: hpPenalty,
+            mcHpLost: mcLost,
+            niuPaiHpLost: niuPaiLost,
+            finalScore: finalScore,
+        };
     },
 
     _playSfx: function (clip, volumeScale) {
@@ -4595,6 +5267,20 @@ cc.Class({
             this._updateHud(0);
             if (this._dialogueControl) this._dialogueControl.update(dt);
             if (this._notificationControl) this._notificationControl.update(dt);
+            return;
+        }
+
+        if (this._deathSequenceActive) {
+            this._stopAllActorMovement();
+            this._updateDeathScreenFade(dt);
+            this._updateHud(0);
+            if (this._dialogueControl) this._dialogueControl.update(dt);
+            if (this._notificationControl) this._notificationControl.update(dt);
+            return;
+        }
+
+        if (this._updateTunnelExitTransition(dt)) {
+            if (this._dialogueControl) this._dialogueControl.update(dt);
             return;
         }
 

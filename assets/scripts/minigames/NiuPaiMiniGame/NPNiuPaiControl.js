@@ -100,7 +100,8 @@ var NPNiuPaiControl = cc.Class({
                 this.pathTimer = 0;
             } else {
                 var speedRatio = Math.min(1, (playerDistance - game.niuPaiStopDistance) / game.niuPaiFollowDistance);
-                var speed = game.niuPaiFollowSpeed * Math.max(0.35, speedRatio);
+                var followSpeed = game._getNiuPaiFollowSpeed ? game._getNiuPaiFollowSpeed() : game.niuPaiFollowSpeed;
+                var speed = followSpeed * Math.max(0.35, speedRatio);
                 velocity.x = dx / distance * speed;
                 velocity.y = dy / distance * speed;
                 velocity = game._filterNodeMapBoundaryVelocity(

@@ -105,14 +105,29 @@ cc.Class({
             return;
         }
 
-        // Won the dog over → she joins you on the spot. Just the dog, no detours.
         self._setNiuPaiCompanionJoined(true);
-        self._say('niupai_post_win');
+        self._say('niupai_post_game', function () {
+            ScreenTransition.fadeOutIn(function () {
+                self._teleportPlayerNearMei();
+            }, function () {
+                self._say('niupai_post_mei_correct');
+            });
+        });
     },
 
     _playNiuPaiTryAgain: function () {
-        // Wrong food — the dog sends you back for another go (soft fail, no heart).
-        this._say('niupai_try_again');
+        var self = this;
+        self._setNiuPaiCompanionJoined(true);
+        self._say('niupai_post_game', function () {
+            ScreenTransition.fadeOutIn(function () {
+                self._teleportPlayerNearMei();
+            }, function () {
+                self._say('niupai_post_mei_wrong', function () {
+                    self._setNiuPaiCompanionJoined(false);
+                    Account.saveProgress();   // re-checkpoint: the cutscene dog has left again
+                });
+            });
+        });
     },
 
     _setNiuPaiCompanionJoined: function (joined) {
@@ -129,7 +144,7 @@ cc.Class({
             cc.warn('[GameController] MainGame teleportPlayerNearNpc unavailable.');
             return;
         }
-        mainGame.teleportPlayerNearNpc('mei', cc.v2(0, -60));
+        mainGame.teleportPlayerNearNpc('mei', cc.v2(0, -100));
     },
 
     _teleportPlayerNearNiuPai: function () {
@@ -138,7 +153,7 @@ cc.Class({
             cc.warn('[GameController] MainGame teleportPlayerNearNpc unavailable.');
             return;
         }
-        mainGame.teleportPlayerNearNpc('niupai', cc.v2(0, 80));
+        mainGame.teleportPlayerNearNpc('niupai', cc.v2(0, -80));
     },
 
     // ── NPC interaction router ────────────────────────────────
@@ -214,13 +229,29 @@ cc.Class({
     },
 
     _runNiuPaiSceneChallenge: function () {
-        // Walk up to the dog → talk to the dog → play the dog's game.
-        // (No Mei cutscene here — the player only ever talks to Niu Pai.)
         var self = this;
         if (StoryState.completed.niupai) { self._say('niupai_done'); return; }
-        self._say('niupai_pre_game', function () {
-            self._say('ready_to_play', function () {
-                cc.director.loadScene('XiaoChiBu');
+
+        var startGame = function () {
+            self._say('niupai_pre_game', function () {
+                self._say('ready_to_play', function () {
+                    cc.director.loadScene('XiaoChiBu');
+                });
+            });
+        };
+
+        if (StoryState.seen['niupai_pre_mei']) {
+            startGame();
+            return;
+        }
+
+        ScreenTransition.fadeOutIn(function () {
+            self._teleportPlayerNearMei();
+        }, function () {
+            self._say('niupai_pre_mei', function () {
+                ScreenTransition.fadeOutIn(function () {
+                    self._teleportPlayerNearNiuPai();
+                }, startGame);
             });
         });
     },
