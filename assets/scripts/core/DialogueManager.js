@@ -54,6 +54,7 @@ cc.Class({
         self._layer.active = false;
 
         self._advanceKeyHeld = false;
+        self._choiceLock     = false;   // brief confirm-lockout right after choices appear
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, self._onKeyDown, self);
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP,   self._onKeyUp,   self);
 
@@ -211,10 +212,27 @@ cc.Class({
             this._showChoices(line.choices);
             this._catcher.active = false;     // force a choice, no click-through
             this._st = ST.WAIT_CHOICE;
+            this._lockChoiceInput();          // ignore a carried-over space/enter for a beat
         } else {
             this._arrow.opacity = 255;
             this._st = ST.WAIT_ADVANCE;
         }
+    },
+
+    // Briefly ignore keyboard confirm right after choices appear, so the same
+    // space/enter tap that advanced the PREVIOUS line doesn't "fall through" and
+    // instantly pick the freshly-shown choice — e.g. the single "▶ Play" button
+    // that `ready_to_play` shows the moment the pre-game dialogue ends. Mouse
+    // clicks and Up/Down navigation stay live; only the confirm key is gated.
+    _lockChoiceInput: function () {
+        var self = this;
+        this._choiceLock = true;
+        this.unschedule(this._unlockChoiceInput);
+        this.scheduleOnce(this._unlockChoiceInput, 0.3);
+    },
+
+    _unlockChoiceInput: function () {
+        this._choiceLock = false;
     },
 
     // ── Input ─────────────────────────────────────────────────
@@ -227,6 +245,7 @@ cc.Class({
             if (e.keyCode === K.down || e.keyCode === K.pagedown || e.keyCode === K.s) { this._moveChoice(1);  return; }
             if (e.keyCode === K.enter || e.keyCode === K.space) {
                 if (this._advanceKeyHeld) return;   // ignore auto-repeat
+                if (this._choiceLock) return;       // ignore an advance tap that "fell through" from the previous line
                 this._advanceKeyHeld = true;
                 this._confirmChoice();
             }

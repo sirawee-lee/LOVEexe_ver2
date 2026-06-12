@@ -48,6 +48,15 @@ const NICE_NAME = {
     runner:      'Race',
 };
 
+// short "how to play" hint shown under each game's name on the interstitial card
+const HOW_TO = {
+    needle:      'Press SPACE to thread the needle',
+    counterGame: 'Count the characters, then click the hand',
+    dontPress:   'Click the button',
+    flappy1:     'Left-click or SPACE to flap',
+    runner:      'Press  ←  →  alternately to run',
+};
+
 // ---- Scoring economy (tune these freely) ------------------------------------
 // Final score = sum over cleared games of (points earned inside it + CLEAR_BONUS)
 //               + (hearts still left at the very end) * HEART_POINTS.
@@ -64,6 +73,7 @@ const COL_LOSE    = cc.color(255, 95, 95);
 const COL_BTN     = cc.color(70, 160, 255);
 const COL_BTN2    = cc.color(120, 120, 130);
 const COL_GOLD    = cc.color(255, 215, 90);
+const COL_HINT    = cc.color(150, 215, 255);   // soft blue "how to play" hint
 
 const GameFlow = {
     sequence: SEQUENCE,
@@ -214,6 +224,31 @@ const GameFlow = {
         this._fadeOut(() => cc.director.loadScene(name));
     },
 
+    // ---- Full-screen black cover used by the interstitial. Returns a node at
+    // `opacity` (0 = transparent) parented to the active Canvas: labels are
+    // attached to it and its opacity is tweened to dip the screen to black.
+    // Returns null when there's no Canvas (caller then loads the scene directly).
+    _fadeCover(opacity) {
+        const canvas = this._getCanvas();
+        if (!canvas) return null;
+
+        const old = canvas.getChildByName('__FlowCover');
+        if (old) old.destroy();
+
+        const cover = new cc.Node('__FlowCover');
+        cover.parent = canvas;
+        cover.zIndex = 10001;                 // above the heart HUD + result overlay
+        cover.setContentSize(canvas.width, canvas.height);
+        cover.opacity = (opacity == null) ? 0 : opacity;
+
+        const g = cover.addComponent(cc.Graphics);
+        g.fillColor = cc.color(0, 0, 0, 255);
+        g.rect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+        g.fill();
+
+        return cover;
+    },
+
     // ---- Boss-rush interstitial: fade to black, announce "ROUND x / 5 + game",
     // hold a beat, then load. The next scene's _fadeIn() takes over from black so
     // the whole hand-off reads as one continuous transition. ---------------------
@@ -224,16 +259,26 @@ const GameFlow = {
 
         const round = this.sequence.indexOf(name) + 1;
         const nice  = NICE_NAME[name] || name;
+        const help  = HOW_TO[name] || '';
 
-        const sub   = this._makeLabel(cover, 'ROUND ' + round + ' / ' + this.sequence.length, 30, COL_GOLD, 0, 50);
-        const title = this._makeLabel(cover, nice, 64, cc.color(255, 255, 255), 0, -14);
-        const heart = this._makeLabel(cover, '♥', 38, COL_HEART, 0, -88);
-        [sub, title, heart].forEach((l) => { l.node.opacity = 0; });
+        const sub   = this._makeLabel(cover, 'ROUND ' + round + ' / ' + this.sequence.length, 30, COL_GOLD, 0, 80);
+        const title = this._makeLabel(cover, nice, 64, cc.color(255, 255, 255), 0, 16);
+        const heart = this._makeLabel(cover, '♥', 34, COL_HEART, 0, -48);
+        // short "how to play" line for this game (boxed width so longer hints wrap)
+        const hint  = help ? this._makeLabel(cover, help, 28, COL_HINT, 0, -116) : null;
+        if (hint) {
+            hint.node.width   = 820;
+            hint.enableWrapText = true;
+            hint.overflow     = cc.Label.Overflow.RESIZE_HEIGHT;
+        }
+
+        const cardLabels = hint ? [sub, title, heart, hint] : [sub, title, heart];
+        cardLabels.forEach((l) => { l.node.opacity = 0; });
 
         cc.tween(cover)
             .to(0.3, { opacity: 255 })                 // dip to black
             .call(() => {                              // pop the card in
-                [sub, title, heart].forEach((l) => {
+                cardLabels.forEach((l) => {
                     l.node.scale = 0.85;
                     cc.tween(l.node).to(0.25, { opacity: 255, scale: 1 }, { easing: 'backOut' }).start();
                 });
