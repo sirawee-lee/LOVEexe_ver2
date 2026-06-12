@@ -7,24 +7,41 @@ var DialogueType = {
     TrollTeleport: 'troll_teleport',
     ExitPreResult: 'exit_pre_result',
     ExitResultSummary: 'exit_result_summary',
+    FirstApplePie: 'first_item_apple_pie',
+    FirstBigMac: 'first_item_bigmac',
+    FirstMcFlurry: 'first_item_mcflurry',
+    FirstObstacleBump: 'first_obstacle_bump',
 };
 
 var DialogueContent = {};
 DialogueContent[DialogueType.IntroControls] = {
     text: 'WASD / Arrow Keys: Run\nShift: Walk\nE: Interact / Use item\nGood Luck!',
-    confirmText: '[E] Start',
+    pages: [
+        'Hints from Stall Manager:\nTry your best to bring Mei her favorite food\nand get out safely.',
+        'Movement: \n[WASD] / [Arrow]: Run\nPress [Shift] To walk SLOWLY',
+        'Items: \nThe ordered items from McDonald can be used \nby pressing [E]\nEach of them might be useful at some point',
+        'The XiaoChiBu is really crowded.\nBe careful about people here.\nWalk slowly or you might BUMP into them!',
+        'Good Luck~ And get that girl what she wanted!'
+    ],
+    confirmText: '[E] Next',
+    finalConfirmText: '[E] Start',
 };
 DialogueContent[DialogueType.TunnelIntro] = {
     pages: [
         'Oh my god where am I?\nIt\'s an exit doesn\'t it... What happened???',
         'It\'s so dark, and kinda feels suffocating...',
         'I need to find a way out of here.',
+        '(You can get back to XiaoChiBu when needed)',
     ],
     confirmText: '[E] Continue',
     finalConfirmText: '[E] Continue',
 };
 DialogueContent[DialogueType.TunnelExitNoFood] = {
-    text: "Oh shit, I didn't brought any food for Mei...",
+    pages: [
+        "(MC put his hand on the door knob...)",
+        "(But he remembered\n why he was here in the first place...)",
+        "Oh shit, I didn't brought any food for Mei..."
+    ],
     confirmText: '[E] Continue',
 };
 DialogueContent[DialogueType.TrollTeleport] = {
@@ -46,6 +63,22 @@ DialogueContent[DialogueType.ExitResultSummary] = {
     confirmText: '[E] Confirm',
     panelWidth: 460,
     panelHeight: 190,
+};
+DialogueContent[DialogueType.FirstApplePie] = {
+    text: 'The smell of cinnamon with \nthe sweet-and-sour apple filling...\nFeels so COMFORTING!',
+    confirmText: '[E] Continue',
+};
+DialogueContent[DialogueType.FirstBigMac] = {
+    text: 'Who would dislike the irresistible Big Mac?\nEven the DOGS love it!',
+    confirmText: '[E] Continue',
+};
+DialogueContent[DialogueType.FirstMcFlurry] = {
+    text: 'This McFlurry is freezing cold...\nMight cause some EXPLOSIVE BRAIN FREEZE~',
+    confirmText: '[E] Continue',
+};
+DialogueContent[DialogueType.FirstObstacleBump] = {
+    text: 'something is on my way...\nbut this seems pretty brittle...',
+    confirmText: '[E] Continue',
 };
 DialogueContent.OrderFlow = {
     askOrder: {
@@ -244,7 +277,7 @@ var NPDialogue = cc.Class({
         this._orderDialogueLabel = this._createLabel('DialogueText', '', 16, cc.Color.BLACK);
         root.addChild(this._orderDialogueLabel, 2);
 
-        this._orderHelpLabel = this._createLabel('OrderHelp', '[W/S] Select    [E] Confirm    [R] Back', 16, cc.color(155, 145, 30));
+        this._orderHelpLabel = this._createLabel('OrderHelp', '[W/S] Select    [E] Confirm    [R] Exit', 16, cc.color(155, 145, 30));
         root.addChild(this._orderHelpLabel, 2);
 
         this._orderChoiceButtons = [];

@@ -136,7 +136,11 @@ module.exports = {
                 { speaker: 'Narrator',     text: 'He decides that now, it is his turn to cheer her up.' },
                 { speaker: 'EECS Boy',     text: 'I can go buy her something to eat...' },
                 { speaker: "Mei's Friend", text: 'Who are you?' },
+<<<<<<< HEAD
                 { speaker: 'EECS Boy',     text: "I'm her friend. Do you know what Mei likes?" },
+=======
+                { speaker: 'EECS Boy',     text: "I'm her friend. (BS) Do you know what Mei likes?" },
+>>>>>>> XiaoChiBu_Game
                 { speaker: "Mei's Friend", text: "Hmm... She likes things that are sweet and smell nice... Food that makes you feel warm when you eat it." },
                 { speaker: 'EECS Boy',     text: 'Got it!' },
             ],
@@ -197,7 +201,16 @@ module.exports = {
                 { speaker: 'Mei',      text: "I think I just want to be alone for a bit. Maybe I'll eat later." },
                 { speaker: 'EECS Boy', text: "Sorry to bother you. I'll try again!" },
                 { speaker: 'Niu Pai',  text: "*WOOF.* (Translation: 'Back to the food court, let's try again!')" },
+<<<<<<< HEAD
                 { speaker: 'Narrator', text: "You didn't win the game, but you didn't lose heart either. Try again!" },
+=======
+                { 
+                    speaker: 'Narrator', text: "You didn't win the game, but you didn't lose heart either. Try again!" ,
+                    choices: [
+                        {text: 'Never Give Up!', affinityDelta: 0, tone: "pink"}
+                    ]
+                },
+>>>>>>> XiaoChiBu_Game
             ],
         },
         niupai_post_win: {
