@@ -208,7 +208,7 @@
     "tunnelBgm": {
       "__uuid__": "b8be2f82-42c3-49ca-81e2-664d39daaa9b"
     },
-    "debugImmediateResult": true,
+    "debugImmediateResult": false,
     "debugImmediateResultType": 1,
     "debugDisableInitialObstacles": false,
     "sfxCorrect": null,
