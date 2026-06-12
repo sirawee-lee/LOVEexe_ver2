@@ -1,6 +1,6 @@
 {
   "ver": "2.3.7",
-  "uuid": "4065fc0b-6425-4e53-91dd-dafb3e717e26",
+  "uuid": "362f6208-c0c7-45b0-b90f-ad15a3762c85",
   "importer": "texture",
   "type": "sprite",
   "wrapMode": "clamp",
@@ -12,11 +12,11 @@
   "height": 32,
   "platformSettings": {},
   "subMetas": {
-    "apple_pie_32": {
+    "item_shadow": {
       "ver": "1.0.6",
-      "uuid": "2737f879-68e6-4cf5-9bb0-b25959d354b4",
+      "uuid": "5ab5c7f6-3ad3-4a50-a68b-80514b20f832",
       "importer": "sprite-frame",
-      "rawTextureUuid": "4065fc0b-6425-4e53-91dd-dafb3e717e26",
+      "rawTextureUuid": "362f6208-c0c7-45b0-b90f-ad15a3762c85",
       "trimType": "none",
       "trimThreshold": 1,
       "rotated": false,

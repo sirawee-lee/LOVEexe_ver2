@@ -150,13 +150,16 @@ var NPBlackDogControl = cc.Class({
         if (game._setBlackDogFollowingStatusIcon) {
             game._setBlackDogFollowingStatusIcon(dog.node, mode === 'rob');
         }
+        if (game._setBlackDogBaitStatusIcon) {
+            game._setBlackDogBaitStatusIcon(dog.node, mode === 'bait');
+        }
 
         if (dog.mode !== mode) {
             dog.mode = mode;
             dog.path = [];
             dog.pathTimer = 0;
-            if (mode === 'bait' && game._playBlackDogBaitAlert) {
-                game._playBlackDogBaitAlert(dog.node);
+            if (mode === 'bait' && game._playSfx) {
+                game._playSfx(game.sfxBlackDogBaitAlert, 0.85);
             }
         }
 
@@ -170,7 +173,8 @@ var NPBlackDogControl = cc.Class({
                 ? this._getChaseTarget(dog, grid, dt)
                 : this._getWanderTarget(dog, grid, dt))));
 
-        this._moveToward(dog, target, (chasing || robbing || baiting) ? game.blackDogChaseSpeed : game.blackDogWanderSpeed, dt);
+        var chaseSpeed = game._getBlackDogChaseSpeed ? game._getBlackDogChaseSpeed() : game.blackDogChaseSpeed;
+        this._moveToward(dog, target, (chasing || robbing || baiting) ? chaseSpeed : game.blackDogWanderSpeed, dt);
         this._updateAttack(dog, dt);
     },
 
@@ -293,7 +297,9 @@ var NPBlackDogControl = cc.Class({
         if (useMcFlurryStaticSprite && this.game._addBlackDogDamageScore) {
             this.game._addBlackDogDamageScore();
         }
-        if (this.game._playSfx) this.game._playSfx(this.game.sfxBlackDogStun);
+        if (useMcFlurryStaticSprite && this.game._playSfx) {
+            this.game._playSfx(this.game.sfxBlackDogStun);
+        }
         dog.stunTimer = Math.max(dog.stunTimer || 0, stunSeconds);
         if (useMcFlurryStaticSprite) this._applyMcFlurryStunSprite(dog);
         dog.path = [];
@@ -586,6 +592,9 @@ var NPBlackDogControl = cc.Class({
         if (this.game._setRunParticleActive) this.game._setRunParticleActive('blackdog', dog.node, false);
         if (this.game._setBlackDogFollowingStatusIcon) {
             this.game._setBlackDogFollowingStatusIcon(dog.node, false);
+        }
+        if (this.game._setBlackDogBaitStatusIcon) {
+            this.game._setBlackDogBaitStatusIcon(dog.node, false);
         }
     },
 
