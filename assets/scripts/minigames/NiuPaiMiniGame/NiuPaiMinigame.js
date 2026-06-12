@@ -3093,7 +3093,10 @@ cc.Class({
 
     _damageBigMacBait: function (bait, amount) {
         if (!bait || bait.hp <= 0) return;
-        this._flashDamageTarget(bait.node);
+        var damageTarget = bait.node && bait.node.isValid
+            ? (bait.node.getChildByName('BigMacBaitVisual') || bait.node)
+            : null;
+        this._flashDamageTarget(damageTarget);
         bait.hp = Math.max(0, bait.hp - Math.max(1, amount || 1));
         this._drawActorHpBar(bait.hpBar, bait.hp, bait.maxHp || this.bigMacBaitHp || 1);
         if (bait.hp > 0) return;
@@ -4450,7 +4453,6 @@ cc.Class({
         return [
             'Food: ' + held,
             'Wallets: ' + Math.max(0, this._walletPickupCount || 0),
-            '',
             'Base Score        +' + breakdown.baseScore,
             'Time Bonus        +' + breakdown.timeBonus,
             'HP Penalty        -' + breakdown.hpPenalty,
