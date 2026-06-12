@@ -129,7 +129,7 @@ cc.Class({
             cc.warn('[GameController] MainGame teleportPlayerNearNpc unavailable.');
             return;
         }
-        mainGame.teleportPlayerNearNpc('mei', cc.v2(0, -60));
+        mainGame.teleportPlayerNearNpc('mei', cc.v2(0, -100));
     },
 
     _teleportPlayerNearNiuPai: function () {
@@ -138,7 +138,7 @@ cc.Class({
             cc.warn('[GameController] MainGame teleportPlayerNearNpc unavailable.');
             return;
         }
-        mainGame.teleportPlayerNearNpc('niupai', cc.v2(0, 80));
+        mainGame.teleportPlayerNearNpc('niupai', cc.v2(0, -80));
     },
 
     // ── NPC interaction router ────────────────────────────────
