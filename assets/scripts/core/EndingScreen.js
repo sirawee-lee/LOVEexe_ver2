@@ -54,7 +54,7 @@ var EndingScreen = {
           },
         },
         {
-          text: "Exit",
+          text: "Main Menu",
           color: COL_GREY,
           hi: COL_GREY_HI,
           onClick: function () {
@@ -87,7 +87,7 @@ var EndingScreen = {
           },
         },
         {
-          text: "Exit",
+          text: "Main Menu",
           color: COL_GREY,
           hi: COL_GREY_HI,
           onClick: function () {
@@ -318,7 +318,7 @@ var EndingScreen = {
           },
         },
         {
-          text: "Exit",
+          text: "Main Menu",
           color: COL_GREY,
           hi: COL_GREY_HI,
           onClick: function () {
@@ -782,13 +782,12 @@ var EndingScreen = {
     cc.director.loadScene("MainScene");
   },
 
+  // "Main Menu" — end the run and return to the title screen (first page)
   _exit: function () {
-    try {
-      if (cc.sys.isBrowser && typeof window !== "undefined") window.close();
-    } catch (e) {}
-    try {
-      cc.game.end();
-    } catch (e) {}
+    this._clear();
+    StoryState.reset(); // run is over → clean slate for the next playthrough
+    StoryState.dialogueActive = false;
+    cc.director.loadScene("MainMenu");
   },
 };
 
